@@ -35,8 +35,14 @@
 (defn total-physical-bytes ^long []
   (Pointer/totalPhysicalBytes))
 
-(defn max-bytes ^long []
+(defn tracked-bytes ^long []
+  (Pointer/totalBytes))
+
+(defn max-tracked-bytes ^long []
   (Pointer/maxBytes))
+
+(defn pointers-count ^long []
+  (Pointer/totalCount))
 
 ;; ================= Memory =================================
 
