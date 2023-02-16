@@ -49,8 +49,8 @@
 (defn malloc! [^long size]
   (Pointer/malloc size))
 
-(defn calloc! [^long n ^long size]
-  (Pointer/malloc size))
+(defn calloc! [^long n ^long entry-size]
+  (Pointer/calloc n entry-size))
 
 (defn realloc! [^Pointer p ^long size]
   (Pointer/realloc p size))
@@ -73,7 +73,12 @@
   (Pointer/memset dst (int ch) size))
 
 (defn fill! [^Pointer p b]
-  (.fill p b))
+  (.fill p b)
+  p)
+
+(defn zero! [^Pointer p]
+  (.zero p)
+  p)
 
 ;; ================= Pointer =================================
 
@@ -81,7 +86,7 @@
   (.address p))
 
 (defn null? [^Pointer p]
-  (Pointer/isNull p))
+  (or (nil? p) (= 0 (.address p))))
 
 (defn capacity ^long [^Pointer p]
   (.capacity p))
@@ -120,23 +125,11 @@
 (defn buffer [^Pointer p]
   (.asBuffer p))
 
-(let [get-deallocator (doto (.getDeclaredMethod Pointer "deallocator" (make-array Class 0))
-                        (.setAccessible true))
-      empty-array (into-array [])]
-  (extend-type Pointer
-    Releaseable
-    (release [this]
-      (if (.invoke get-deallocator this empty-array)
-        (do (.deallocate this)
-            (.setNull this))
-        (free! this))
-      true)))
-
 (defprotocol PointerCreator
   (pointer [this]))
 
 (defprotocol TypedPointerCreator
-  (pointer-pointer [this])
+  (pointer-pointer [this] [this charset])
   (byte-pointer [this] [this charset])
   (bool-pointer [this])
   (clong-pointer [this])
@@ -154,7 +147,93 @@
   (get-entry [pointer] [pointer i]))
 
 (defprotocol PutPointer
-  (put-pointer* [src dst]))
+  (put-pointer* [src dst] [arg1 src dst]))
+
+(def ^:const pointer-types
+  {DoublePointer :double
+   FloatPointer :float
+   LongPointer :long
+   IntPointer :int
+   ShortPointer :short
+   BytePointer :byte
+   CharPointer :char
+   CLongPointer :clong
+   SizeTPointer :size-t
+   BoolPointer :bool
+   FunctionPointer :function
+   PointerPointer :pointer
+   Pointer :default})
+
+(def ^:const type-pointers
+  {:double DoublePointer
+   :float FloatPointer
+   :long LongPointer
+   :int IntPointer
+   :short ShortPointer
+   :byte BytePointer
+   :char CharPointer
+   :clong CLongPointer
+   :size-t SizeTPointer
+   :bool BoolPointer
+   :function FunctionPointer
+   :pointer PointerPointer
+   :default Pointer})
+
+(let [get-deallocator (doto (.getDeclaredMethod Pointer "deallocator" (make-array Class 0))
+                        (.setAccessible true))
+      empty-array (into-array [])]
+  (extend-type Pointer
+    Releaseable
+    (release [this]
+      (if (.invoke get-deallocator this empty-array)
+        (do (.deallocate this)
+            (.setNull this))
+        (free! this))
+      true)
+    Info
+    (info
+      ([this]
+       {:address (.address this)
+        :type (let [t (type this)] (get pointer-types t t))
+        :position (.position this)
+        :limit (.limit this)
+        :capacity (.capacity this)
+        :deallocator (.invoke get-deallocator this empty-array)})
+      ([this info-type]
+       (case info-type
+         :address (.address this)
+         :type (let [t (type this)] (get pointer-types t t))
+         :position (.position this)
+         :limit (.limit this)
+         :capacity (.capacity this)
+         :deallocator (.invoke get-deallocator this empty-array)
+         nil)))
+    PointerCreator
+    (pointer [this]
+      (Pointer. this))
+    TypedPointerCreator
+    (byte-pointer [this]
+      (BytePointer. this))
+    (clong-pointer [this]
+      (CLongPointer. this))
+    (size-t-pointer [this]
+      (SizeTPointer. this))
+    (pointer-pointer [this]
+      (PointerPointer. this))
+    (char-pointer [this]
+      (CharPointer. this))
+    (short-pointer [this]
+      (ShortPointer. this))
+    (int-pointer [this]
+      (IntPointer. this))
+    (long-pointer [this]
+      (LongPointer. this))
+    (float-pointer [this]
+      (FloatPointer. this))
+    (double-pointer [this]
+      (DoublePointer. this))
+    (pointer-pointer [this]
+      (PointerPointer. this))))
 
 (extend-type nil
   PointerCreator
@@ -187,47 +266,44 @@
   (pointer [this]
     (Pointer. this)))
 
-(defmacro create-new* [constructor arg-type arg]
-  `(new ~constructor ~(with-meta arg {:tag arg-type})))
+(defmacro create-new*
+  ([constructor size]
+   `(if (<= 0 (long ~size))
+      (new ~constructor (long ~size))
+      (dragan-says-ex "Array size must be 0 or larger."
+                      {:size ~size})))
+  ([constructor arg-type arg]
+   `(new ~constructor ~(with-meta arg {:tag arg-type}))))
 
-(defmacro extend-creator
-  ([ct]
-   `(extend-creator ~ct ~ct))
-  ([ct arg-type]
-   `(extend-type ~ct
-      TypedPointerCreator
-      (byte-pointer [this#]
-        (create-new* BytePointer ~arg-type this#))
-      (clong-pointer [this#]
-        (create-new* CLongPointer ~arg-type this#))
-      (size-t-pointer [this#]
-        (create-new* SizeTPointer ~arg-type this#))
-      (pointer-pointer [this#]
-        (create-new* PointerPointer ~arg-type this#))
-      (char-pointer [this#]
-        (create-new* CharPointer ~arg-type this#))
-      (short-pointer [this#]
-        (create-new* ShortPointer ~arg-type this#))
-      (int-pointer [this#]
-        (create-new* IntPointer ~arg-type this#))
-      (long-pointer [this#]
-        (create-new* LongPointer ~arg-type this#))
-      (float-pointer [this#]
-        (create-new* FloatPointer ~arg-type this#))
-      (double-pointer [this#]
-        (create-new* DoublePointer ~arg-type this#)))))
+(defmacro extend-creator [ct]
+  `(extend-type ~ct
+     TypedPointerCreator
+     (byte-pointer [this#]
+       (create-new* BytePointer this#))
+     (clong-pointer [this#]
+       (create-new* CLongPointer this#))
+     (size-t-pointer [this#]
+       (create-new* SizeTPointer this#))
+     (pointer-pointer [this#]
+       (create-new* PointerPointer this#))
+     (char-pointer [this#]
+       (create-new* CharPointer this#))
+     (short-pointer [this#]
+       (create-new* ShortPointer this#))
+     (int-pointer [this#]
+       (create-new* IntPointer this#))
+     (long-pointer [this#]
+       (create-new* LongPointer this#))
+     (float-pointer [this#]
+       (create-new* FloatPointer this#))
+     (double-pointer [this#]
+       (create-new* DoublePointer this#))))
 
-(extend-creator Pointer)
-(extend-creator Character long)
-(extend-creator Byte long)
-(extend-creator Short long)
-(extend-creator Integer long)
+(extend-creator Character)
+(extend-creator Byte)
+(extend-creator Short)
+(extend-creator Integer)
 (extend-creator Long)
-
-(extend-type Buffer
-  PointerCreator
-  (pointer [b]
-    (Pointer. b)))
 
 (extend-type Seqable
   TypedPointerCreator
@@ -240,7 +316,7 @@
   (pointer-pointer [this]
     (pointer-pointer (into-array (class (first this)) this)))
   (char-pointer [this]
-    (CharPointer. (char-array this)))
+    (CharPointer. (char-array (map char this))))
   (short-pointer [this]
     (ShortPointer. (short-array this)))
   (int-pointer [this]
@@ -252,57 +328,166 @@
   (double-pointer [this]
     (DoublePointer. (double-array this))))
 
-(defmacro extend-typed-creator
-  ([creator-class pt method]
-   `(extend-typed-creator ~creator-class ~creator-class ~pt ~method))
-  ([creator-class creator-type pt method]
-   `(extend-type ~creator-class
-       PointerCreator
-       (pointer [this#]
-         (create-new* ~pt ~creator-type this#))
-       TypedPointerCreator
-       (~method [this#]
-        (create-new* ~pt ~creator-type this#)))))
+(extend-type Buffer
+  PointerCreator
+  (pointer [b]
+    (Pointer. b)))
 
-(extend-typed-creator CharBuffer CharPointer char-pointer)
-(extend-typed-creator ByteBuffer BytePointer byte-pointer)
-(extend-typed-creator ShortBuffer ShortPointer short-pointer)
-(extend-typed-creator IntBuffer IntPointer int-pointer)
-(extend-typed-creator LongBuffer LongPointer long-pointer)
-(extend-typed-creator FloatBuffer FloatPointer float-pointer)
-(extend-typed-creator DoubleBuffer DoublePointer double-pointer)
-(extend-typed-creator (Class/forName "[Ljava.lang.Character;") chars CharPointer char-pointer)
-(extend-typed-creator (Class/forName "[B") bytes BytePointer byte-pointer)
-(extend-typed-creator (Class/forName "[S") shorts ShortPointer short-pointer)
-(extend-typed-creator (Class/forName "[I") ints IntPointer int-pointer)
-(extend-typed-creator (Class/forName "[F") floats FloatPointer float-pointer)
-(extend-typed-creator (Class/forName "[D") doubles DoublePointer double-pointer)
-
-(defmacro extend-pointer-pointer [array-class]
-  `(extend-type ~array-class
+(defmacro extend-buffer [buffer-class pt method]
+  `(extend-type ~buffer-class
+     PointerCreator
+     (pointer [this#]
+       (create-new* ~pt ~buffer-class this#))
      TypedPointerCreator
-     (pointer-pointer [this#]
-       (create-new* PointerPointer ~array-class this#))))
+     (~method [this#]
+      (create-new* ~pt ~buffer-class this#))))
 
-(extend-pointer-pointer (Class/forName "[[B"))
-(extend-pointer-pointer (Class/forName "[Ljava.lang.Character;"))
-(extend-pointer-pointer (Class/forName "[[S"))
-(extend-pointer-pointer (Class/forName "[[I"))
-(extend-pointer-pointer (Class/forName "[[J"))
-(extend-pointer-pointer (Class/forName "[[F"))
-(extend-pointer-pointer (Class/forName "[[D"))
+(extend-buffer CharBuffer CharPointer char-pointer)
+(extend-buffer ByteBuffer BytePointer byte-pointer)
+(extend-buffer ShortBuffer ShortPointer short-pointer)
+(extend-buffer IntBuffer IntPointer int-pointer)
+(extend-buffer LongBuffer LongPointer long-pointer)
+(extend-buffer FloatBuffer FloatPointer float-pointer)
+(extend-buffer DoubleBuffer DoublePointer double-pointer)
+
+(defmacro access*
+  ([method pt dst src]
+   `(. ~(with-meta dst {:tag pt}) ~method ~(with-meta src {:tag Pointer})))
+  ([method pt p val-type a]
+   `(. ~(with-meta p {:tag pt}) ~method ~(with-meta a {:tag val-type})))
+  ([method pt p val-type a offset length]
+   `(. ~(with-meta p {:tag pt}) ~method ~(with-meta a {:tag val-type}) ~offset ~length)))
+
+(defmacro extend-array [array-class array-type pt method]
+ `(extend-type ~array-class
+    PointerCreator
+    (pointer [this#]
+      (create-new* ~pt ~array-type this#))
+    TypedPointerCreator
+    (~method [this#]
+     (create-new* ~pt ~array-type this#))
+    PutPointer
+    (put-pointer* [src# dst#]
+      (access* put ~pt dst# ~array-type src#))))
+
+(extend-array (Class/forName "[C") chars CharPointer char-pointer)
+(extend-array (Class/forName "[B") bytes BytePointer byte-pointer)
+(extend-array (Class/forName "[S") shorts ShortPointer short-pointer)
+(extend-array (Class/forName "[I") ints IntPointer int-pointer)
+(extend-array (Class/forName "[F") floats FloatPointer float-pointer)
+(extend-array (Class/forName "[D") doubles DoublePointer double-pointer)
+
+(extend-protocol PutPointer
+  Pointer
+  (put! [src dst]
+    (.put ^Pointer dst ^Pointer src))
+  Double
+  (put-pointer* [x p]
+    (.put ^DoublePointer p (double x) ))
+  Float
+  (put-pointer* [x p]
+    (.put ^FloatPointer p (float x)))
+  Long
+  (put-pointer* [x p]
+    (.put ^LongPointer p (long x)))
+  Integer
+  (put-pointer* [x p]
+    (.put ^IntPointer p (int x)))
+  Short
+  (put-pointer* [x p]
+    (.put ^ShortPointer p (short x)))
+  Character
+  (put-pointer* [x p]
+    (.put ^CharPointer p (char x)))
+  Byte
+  (put-pointer* [x p]
+    (.put ^BytePointer p (byte x))))
+
+(extend-type (Class/forName "[[B")
+  TypedPointerCreator
+  (pointer-pointer [this]
+    (PointerPointer. ^"[[B" this))
+  PutPointer
+  (put-pointer* [src dst]
+    (.put ^PointerPointer dst ^"[[B" src)))
+
+(extend-type (Class/forName "[[S")
+  TypedPointerCreator
+  (pointer-pointer [this]
+    (PointerPointer. ^"[[S" this))
+  PutPointer
+  (put-pointer* [src dst]
+    (.put ^PointerPointer dst ^"[[S" src)))
+
+(extend-type (Class/forName "[[I")
+  TypedPointerCreator
+  (pointer-pointer [this]
+    (PointerPointer. ^"[[I" this))
+  PutPointer
+  (put-pointer* [src dst]
+    (.put ^PointerPointer dst ^"[[I" src)))
+
+(extend-type (Class/forName "[[F")
+  TypedPointerCreator
+  (pointer-pointer [this]
+    (PointerPointer. ^"[[F" this))
+  PutPointer
+  (put-pointer* [src dst]
+    (.put ^PointerPointer dst ^"[[F" src)))
+
+(extend-type (Class/forName "[[D")
+  TypedPointerCreator
+  (pointer-pointer [this]
+    (PointerPointer. ^"[[D" this))
+  PutPointer
+  (put-pointer* [src dst]
+    (.put ^PointerPointer dst ^"[[D" src)))
+
+(extend-type (Class/forName "[[C")
+  TypedPointerCreator
+  (pointer-pointer [this]
+    (PointerPointer. ^"[[C" this))
+  PutPointer
+  (put-pointer* [src dst]
+    (.put ^PointerPointer dst ^"[[C" src)))
+
+(extend-type (Class/forName "[Lorg.bytedeco.javacpp.Pointer;")
+  TypedPointerCreator
+  (pointer-pointer [this]
+    (PointerPointer. ^"[Lorg.bytedeco.javacpp.Pointer;" this))
+  PutPointer
+  (put-pointer* [src dst]
+    (.put ^PointerPointer dst ^"[Lorg.bytedeco.javacpp.Pointer;" src)))
+
+(extend-type (Class/forName "[Ljava.lang.String;")
+  TypedPointerCreator
+  (pointer-pointer
+    ([this]
+     (PointerPointer. ^"[Ljava.lang.String;" this))
+    ([this charset]
+     (if (string? charset)
+       (PointerPointer. ^"[Ljava.lang.String;" this ^String charset)
+       (PointerPointer. ^"[Ljava.lang.String;" this ^Charset charset))))
+  PutPointer
+  (put-pointer* [src dst]
+    (.putString ^PointerPointer dst ^"[Ljava.lang.String;" src)))
 
 (extend-type (Class/forName "[J")
   PointerCreator
   (pointer [this]
     (LongPointer. ^longs this))
   TypedPointerCreator
+  (pointer-pointer [this]
+    (PointerPointer. ^"[[J" this))
   (clong-pointer [this]
     (CLongPointer. ^longs this))
   (size-t-pointer [this]
     (SizeTPointer. ^longs this))
   (long-pointer [this]
-    (LongPointer. ^longs this)))
+    (LongPointer. ^longs this))
+  PutPointer
+  (put-pointer* [src dst]
+    (.put ^PointerPointer dst ^"[[J" src)))
 
 (extend-type String
   PointerCreator
@@ -312,7 +497,15 @@
     ([s charset]
      (if (string? charset)
        (BytePointer. s ^String charset)
-       (BytePointer. s ^Charset charset)))))
+       (BytePointer. s ^Charset charset))))
+  PutPointer
+  (put-pointer* [charset-name src dst]
+    (.putString ^PointerPointer dst ^"[Ljava.lang.String;" src ^String charset-name)))
+
+(extend-type Charset
+  PutPointer
+  (put-pointer* [charset src dst]
+    (.putString ^PointerPointer dst ^"[Ljava.lang.String;" src ^String charset)))
 
 (defn get-string
   ([^BytePointer p]
@@ -426,27 +619,18 @@
 (defn get-string-bytes ^bytes [^BytePointer p]
   (.getStringBytes p ))
 
-(defmacro access*
-  ([method pt dst src]
-   `(. ~(with-meta dst {:tag pt}) ~method ~(with-meta src {:tag Pointer})))
-  ([method pt p val-type a]
-   `(. ~(with-meta p {:tag pt}) ~method ~(with-meta a {:tag val-type})))
-  ([method pt p val-type a offset length]
-   `(. ~(with-meta p {:tag pt}) ~method ~(with-meta a {:tag val-type}) ~offset ~length)))
+(defn pointer-seq
+  ([^Pointer p]
+   (if (null? p)
+     nil
+     (pointer-seq p (.position p) (.limit p))))
+  ([p ^long i ^long limit]
+   (lazy-seq
+    (if (< -1 i limit)
+      (cons (get-entry p i) (pointer-seq p (inc i) limit))
+      '()))))
 
-(extend-type Pointer
-  PointerCreator
-  (pointer [this]
-    (Pointer. this))
-  TypedPointerCreator
-  (pointer-pointer [this]
-    (PointerPointer. this))
-  PutPointer
-  (put-pointer*
-    ([src dst]
-     (.put ^Pointer dst src))))
-
-(defmacro extend-pointer [pt entry-type array-type]
+(defmacro extend-pointer [pt entry-type array-type convert-fn]
   `(extend-type ~pt
      Accessor
      (get-entry
@@ -461,18 +645,39 @@
         (access* get ~pt p# ~array-type arr# offset# length#)))
      (put!
        ([p# obj#]
-        (.put p# (~array-type obj#)))
+        (if (sequential? obj#)
+          (access* put ~pt p# ~array-type (~convert-fn obj#))
+          (put-pointer* obj# p#))
+        p#)
        ([this# i# x#]
-        (.put this# (long i#) x#))
+        (.put this# (long i#) (~entry-type x#)))
        ([p# arr# offset# length#]
         (access* put ~pt p# ~array-type arr# offset# length#)))))
 
-(extend-pointer CLongPointer long longs)
-(extend-pointer SizeTPointer long longs)
-(extend-pointer BytePointer byte bytes)
-(extend-pointer CharPointer char chars)
-(extend-pointer ShortPointer short shorts)
-(extend-pointer IntPointer int ints)
-(extend-pointer LongPointer long longs)
-(extend-pointer FloatPointer float floats)
-(extend-pointer DoublePointer double doubles)
+(extend-pointer CLongPointer long longs long-array)
+(extend-pointer SizeTPointer long longs long-array)
+(extend-pointer BytePointer byte bytes byte-array)
+(extend-pointer CharPointer char chars #(char-array (map char %)))
+(extend-pointer ShortPointer short shorts short-array)
+(extend-pointer IntPointer int ints int-array)
+(extend-pointer LongPointer long longs long-array)
+(extend-pointer FloatPointer float floats float-array)
+(extend-pointer DoublePointer double doubles double-array)
+
+(extend-type PointerPointer
+  Accessor
+  (get-entry
+    ([this]
+     (.get this))
+    ([this i]
+     (.get this (long i))))
+  (put!
+    ([p obj]
+     (put-pointer* obj p)
+     p)
+    ([this arg1 arg2]
+     (put-pointer* arg2 arg1 this)
+     this))
+  PutPointer
+  (put-pointer* [i src dst]
+    (.put ^PointerPointer dst i ^Pointer src)))
