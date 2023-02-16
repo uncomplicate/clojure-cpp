@@ -91,20 +91,11 @@
 (defn capacity ^long [^Pointer p]
   (.capacity p))
 
-#_(defn capacity! [^Pointer p ^long capacity]
-    (.capacity p capacity))
-
 (defn limit ^long [^Pointer p]
   (.limit p))
 
-#_(defn limit! [^Pointer p ^long limit]
-    (.limit p limit))
-
 (defn position ^long [^Pointer p]
   (.position p))
-
-#_(defn position! [^Pointer p ^long position]
-    (.position p position))
 
 (defn sizeof ^long [^Pointer p]
   (.sizeof p))

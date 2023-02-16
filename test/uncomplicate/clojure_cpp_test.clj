@@ -44,12 +44,13 @@
    (null? p2) => true
    (release p2) => true))
 
-(defn test-array-pointer [constructor cast]
+(defn test-array-pointer [constructor cast array]
   (facts
    (format "Test %s pointer." cast)
    (let [bp (constructor 3)
          bp1 (constructor bp)
-         bp2 (constructor [100 101 102])]
+         bp2 (constructor [100 101 102])
+         bp3 (constructor (array (map cast [100 101 102])))]
      (constructor -1) => (throws Exception)
      (null? bp) => false
      (count (pointer-seq bp)) => 3
@@ -66,17 +67,20 @@
      (put! bp1 [10 20 30]) => bp1
      (pointer-seq bp) => (map cast [10 20 30])
      (pointer-seq bp2) => (map cast [100 101 102])
+     bp3 =not=> bp2
      (release bp) => true
-     (release bp1) => true)))
+     (release bp1) => true
+     (release bp2) => true
+     (release bp3) => true)))
 
-(test-array-pointer byte-pointer byte)
-(test-array-pointer char-pointer char)
-(test-array-pointer short-pointer short)
-(test-array-pointer int-pointer int)
-(test-array-pointer long-pointer long)
-(test-array-pointer float-pointer float)
-(test-array-pointer double-pointer double)
-(test-array-pointer size-t-pointer long)
-(test-array-pointer size-t-pointer int)
-(test-array-pointer clong-pointer long)
-(test-array-pointer clong-pointer int)
+(test-array-pointer byte-pointer byte byte-array)
+(test-array-pointer char-pointer char char-array)
+(test-array-pointer short-pointer short short-array)
+(test-array-pointer int-pointer int int-array)
+(test-array-pointer long-pointer long long-array)
+(test-array-pointer float-pointer float float-array)
+(test-array-pointer double-pointer double double-array)
+(test-array-pointer size-t-pointer long long-array)
+(test-array-pointer size-t-pointer int long-array)
+(test-array-pointer clong-pointer long long-array)
+(test-array-pointer clong-pointer int long-array)
