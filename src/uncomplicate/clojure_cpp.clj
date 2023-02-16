@@ -86,7 +86,7 @@
   (.address p))
 
 (defn null? [^Pointer p]
-  (or (nil? p) (= 0 (.address p))))
+  (Pointer/isNull p))
 
 (defn capacity ^long [^Pointer p]
   (.capacity p))
@@ -259,12 +259,9 @@
   (float-pointer [_]
     (FloatPointer.))
   (double-pointer [_]
-    (DoublePointer.)))
-
-(extend-protocol PointerCreator
-  Pointer
-  (pointer [this]
-    (Pointer. this)))
+    (DoublePointer.))
+  (pointer-pointer [_]
+    (PointerPointer.)))
 
 (defmacro create-new*
   ([constructor size]

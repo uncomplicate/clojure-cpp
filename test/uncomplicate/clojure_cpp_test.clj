@@ -48,7 +48,8 @@
   (facts
    (format "Test %s pointer." cast)
    (let [bp (constructor 3)
-         bp1 (constructor bp)]
+         bp1 (constructor bp)
+         bp2 (constructor [100 101 102])]
      (constructor -1) => (throws Exception)
      (null? bp) => false
      (count (pointer-seq bp)) => 3
@@ -63,7 +64,10 @@
      (zero! bp) => bp
      (get-entry bp 0) => (cast 0)
      (put! bp1 [10 20 30]) => bp1
-     (pointer-seq bp) => (map cast [10 20 30]))))
+     (pointer-seq bp) => (map cast [10 20 30])
+     (pointer-seq bp2) => (map cast [100 101 102])
+     (release bp) => true
+     (release bp1) => true)))
 
 (test-array-pointer byte-pointer byte)
 (test-array-pointer char-pointer char)
