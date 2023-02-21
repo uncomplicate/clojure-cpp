@@ -49,8 +49,8 @@
 (defn malloc! [^long size]
   (Pointer/malloc size))
 
-(defn calloc! [^long n ^long entry-size]
-  (Pointer/calloc n entry-size))
+(defn calloc! [^long n ^long element-size]
+  (Pointer/calloc n element-size))
 
 (defn realloc! [^Pointer p ^long size]
   (Pointer/realloc p size))
@@ -96,6 +96,9 @@
 
 (defn position ^long [^Pointer p]
   (.position p))
+
+(defn position! [^Pointer p ^long n]
+  (.position p n))
 
 (defn sizeof ^long [^Pointer p]
   (.sizeof p))
@@ -222,9 +225,7 @@
     (float-pointer [this]
       (FloatPointer. this))
     (double-pointer [this]
-      (DoublePointer. this))
-    (pointer-pointer [this]
-      (PointerPointer. this))))
+      (DoublePointer. this))))
 
 (extend-type nil
   PointerCreator
@@ -250,9 +251,7 @@
   (float-pointer [_]
     (FloatPointer.))
   (double-pointer [_]
-    (DoublePointer.))
-  (pointer-pointer [_]
-    (PointerPointer.)))
+    (DoublePointer.)))
 
 (defmacro create-new*
   ([constructor size]
@@ -321,6 +320,26 @@
   (pointer [b]
     (Pointer. b)))
 
+(extend-type ByteBuffer
+  PointerCreator
+  (pointer [this]
+    (BytePointer. this))
+  TypedPointerCreator
+  (byte-pointer [this]
+    (BytePointer. this))
+  (char-pointer [this]
+    (CharPointer. (.asCharBuffer this)))
+  (short-pointer [this]
+    (ShortPointer. (.asShortBuffer this)))
+  (int-pointer [this]
+    (IntPointer. (.asIntBuffer this)))
+  (long-pointer [this]
+    (LongPointer. (.asLongBuffer this)))
+  (float-pointer [this]
+    (FloatPointer. (.asFloatBuffer this)))
+  (double-pointer [this]
+    (DoublePointer. (.asDoubleBuffer this))))
+
 (defmacro extend-buffer [buffer-class pt method]
   `(extend-type ~buffer-class
      PointerCreator
@@ -347,16 +366,16 @@
    `(. ~(with-meta p {:tag pt}) ~method ~(with-meta a {:tag val-type}) ~offset ~length)))
 
 (defmacro extend-array [array-class array-type pt method]
- `(extend-type ~array-class
-    PointerCreator
-    (pointer [this#]
+  `(extend-type ~array-class
+     PointerCreator
+     (pointer [this#]
+       (create-new* ~pt ~array-type this#))
+     TypedPointerCreator
+     (~method [this#]
       (create-new* ~pt ~array-type this#))
-    TypedPointerCreator
-    (~method [this#]
-     (create-new* ~pt ~array-type this#))
-    PutPointer
-    (put-pointer* [src# dst#]
-      (access* put ~pt dst# ~array-type src#))))
+     PutPointer
+     (put-pointer* [src# dst#]
+       (access* put ~pt dst# ~array-type src#))))
 
 (extend-array (Class/forName "[C") chars CharPointer char-pointer)
 (extend-array (Class/forName "[B") bytes BytePointer byte-pointer)
@@ -607,16 +626,15 @@
 (defn get-string-bytes ^bytes [^BytePointer p]
   (.getStringBytes p ))
 
-(defn pointer-seq
-  ([^Pointer p]
-   (if (null? p)
-     nil
-     (pointer-seq p (.position p) (.limit p))))
-  ([p ^long i ^long limit]
-   (lazy-seq
-    (if (< -1 i limit)
-      (cons (get-entry p i) (pointer-seq p (inc i) limit))
-      '()))))
+(defn pointer-seq [^Pointer p]
+  (letfn [(pointer-seq* [p ^long i ^long n]
+            (lazy-seq
+             (if (< -1 i n)
+               (cons (get-entry p i) (pointer-seq* p (inc i) n))
+               '())))]
+    (if (null? p)
+      nil
+      (pointer-seq* p 0 (max 0 (- (.limit p) (.position p)))))))
 
 (defmacro extend-pointer [pt entry-type array-type convert-fn]
   `(extend-type ~pt
