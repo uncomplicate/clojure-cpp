@@ -8,7 +8,7 @@
 
 (ns uncomplicate.clojure-cpp
   (:require [uncomplicate.commons
-             [core :refer [Releaseable release let-release Info info]]
+             [core :refer [Releaseable release let-release Info info Viewable view]]
              [utils :refer [dragan-says-ex]]])
   (:import [java.nio Buffer ByteBuffer CharBuffer ShortBuffer IntBuffer LongBuffer FloatBuffer
             DoubleBuffer]
@@ -91,14 +91,23 @@
 (defn capacity ^long [^Pointer p]
   (.capacity p))
 
+(defn capacity! [^Pointer p ^long n]
+  (.capacity p n))
+
 (defn limit ^long [^Pointer p]
   (.limit p))
+
+(defn limit! [^Pointer p ^long n]
+  (.limit p n))
 
 (defn position ^long [^Pointer p]
   (.position p))
 
 (defn position! [^Pointer p ^long n]
   (.position p n))
+
+(defn element-count ^long [^Pointer p]
+  (max 0 (- (.limit p) (.position p))))
 
 (defn sizeof ^long [^Pointer p]
   (.sizeof p))
@@ -171,7 +180,14 @@
    :bool BoolPointer
    :function FunctionPointer
    :pointer PointerPointer
-   :default Pointer})
+   :default Pointer
+   Double/TYPE DoublePointer
+   Float/TYPE FloatPointer
+   Long/TYPE LongPointer
+   Integer/TYPE IntPointer
+   Short/TYPE ShortPointer
+   Byte/TYPE BytePointer
+   Character/TYPE CharPointer})
 
 (let [get-deallocator (doto (.getDeclaredMethod Pointer "deallocator" (make-array Class 0))
                         (.setAccessible true))
@@ -634,10 +650,13 @@
                '())))]
     (if (null? p)
       nil
-      (pointer-seq* p 0 (max 0 (- (.limit p) (.position p)))))))
+      (pointer-seq* p 0 (element-count p)))))
 
 (defmacro extend-pointer [pt entry-type array-type convert-fn]
   `(extend-type ~pt
+     PointerCreator
+     (pointer [this#]
+       (create-new* ~pt ~pt this#))
      Accessor
      (get-entry
        ([this#]
