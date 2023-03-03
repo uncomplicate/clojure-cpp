@@ -129,7 +129,7 @@
   (.asBuffer p))
 
 (defprotocol PointerCreator
-  (pointer [this]))
+  (pointer [this] [this i]))
 
 (defprotocol TypedPointerCreator
   (pointer-pointer [this] [this charset])
@@ -219,8 +219,11 @@
          :deallocator (.invoke get-deallocator this empty-array)
          nil)))
     PointerCreator
-    (pointer [this]
-      (Pointer. this))
+    (pointer
+      ([this]
+       (Pointer. this))
+      ([this i]
+       (.position (Pointer. this) i)))
     TypedPointerCreator
     (byte-pointer [this]
       (BytePointer. this))
@@ -245,6 +248,11 @@
 
 (extend-type nil
   PointerCreator
+  (pointer
+    ([_]
+     (Pointer.))
+    ([this i]
+     (.position (Pointer.) i)))
   (pointer [_]
     (Pointer.))
   TypedPointerCreator
@@ -333,13 +341,19 @@
 
 (extend-type Buffer
   PointerCreator
-  (pointer [b]
-    (Pointer. b)))
+  (pointer
+    ([b]
+     (Pointer. b))
+    ([b i]
+     (.position (Pointer. b) i))))
 
 (extend-type ByteBuffer
   PointerCreator
-  (pointer [this]
-    (BytePointer. this))
+  (pointer
+    ([this]
+     (BytePointer. this))
+    ([this i]
+     (.position (BytePointer. this) i)))
   TypedPointerCreator
   (byte-pointer [this]
     (BytePointer. this))
@@ -359,8 +373,11 @@
 (defmacro extend-buffer [buffer-class pt method]
   `(extend-type ~buffer-class
      PointerCreator
-     (pointer [this#]
-       (create-new* ~pt ~buffer-class this#))
+     (pointer
+       ([this#]
+        (create-new* ~pt ~buffer-class this#))
+       ([this# i#]
+        (position! (create-new* ~pt ~buffer-class this#) i#)))
      TypedPointerCreator
      (~method [this#]
       (create-new* ~pt ~buffer-class this#))))
@@ -384,8 +401,11 @@
 (defmacro extend-array [array-class array-type pt method]
   `(extend-type ~array-class
      PointerCreator
-     (pointer [this#]
-       (create-new* ~pt ~array-type this#))
+     (pointer
+       ([this#]
+        (create-new* ~pt ~array-type this#))
+       ([this# i#]
+        (position! (create-new* ~pt ~array-type this#) i#)))
      TypedPointerCreator
      (~method [this#]
       (create-new* ~pt ~array-type this#))
@@ -497,8 +517,11 @@
 
 (extend-type (Class/forName "[J")
   PointerCreator
-  (pointer [this]
-    (LongPointer. ^longs this))
+  (pointer
+    ([this]
+     (LongPointer. ^longs this))
+    ([this i]
+     (.position (LongPointer. ^longs this) i)))
   TypedPointerCreator
   (pointer-pointer [this]
     (PointerPointer. ^"[[J" this))
@@ -655,8 +678,11 @@
 (defmacro extend-pointer [pt entry-type array-type convert-fn]
   `(extend-type ~pt
      PointerCreator
-     (pointer [this#]
-       (create-new* ~pt ~pt this#))
+     (pointer
+       ([this#]
+        (create-new* ~pt ~pt this#))
+       ([this# i#]
+        (position! (create-new* ~pt ~pt this#) i#)))
      Accessor
      (get-entry
        ([this#]
