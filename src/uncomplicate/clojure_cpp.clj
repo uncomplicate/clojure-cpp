@@ -353,7 +353,7 @@
     ([this]
      (BytePointer. this))
     ([this i]
-     (.position (BytePointer. this) i)))
+     (.position (BytePointer. this) (long i))))
   TypedPointerCreator
   (byte-pointer [this]
     (BytePointer. this))
@@ -521,7 +521,7 @@
     ([this]
      (LongPointer. ^longs this))
     ([this i]
-     (.position (LongPointer. ^longs this) i)))
+     (.position (LongPointer. ^longs this) (long i))))
   TypedPointerCreator
   (pointer-pointer [this]
     (PointerPointer. ^"[[J" this))
