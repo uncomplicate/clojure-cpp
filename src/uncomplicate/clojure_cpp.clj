@@ -8,7 +8,7 @@
 
 (ns uncomplicate.clojure-cpp
   (:require [uncomplicate.commons
-             [core :refer [Releaseable release let-release Info info Viewable view]]
+             [core :refer [Releaseable release let-release Info info Viewable view Wrapper]]
              [utils :refer [dragan-says-ex]]])
   (:import [java.nio Buffer ByteBuffer CharBuffer ShortBuffer IntBuffer LongBuffer FloatBuffer
             DoubleBuffer]
@@ -122,6 +122,56 @@
 
 ;; ================= Buffer =================================
 
+(defn safe [x]
+  (if-not (null? x)
+    x
+    (dragan-says-ex "NULL pointer is not allowed in this part of code. Please do not use non-initialized pointers here."
+                    {:x x})))
+
+(defn float-ptr ^FloatPointer
+  ([x] (safe x))
+  ([^FloatPointer x ^long i]
+   (safe (.position (FloatPointer. x) i))))
+
+(defn double-ptr ^DoublePointer
+  ([x] (safe x))
+  ([^FloatPointer x ^long i]
+   (safe (.position (FloatPointer. x) i))))
+
+(defn long-ptr ^LongPointer
+  ([x] x)
+  ([^LongPointer x ^long i]
+   (safe (.position (LongPointer. x) i))))
+
+(defn int-ptr ^IntPointer
+  ([x] x)
+  ([^IntPointer x ^long i]
+   (safe (.position (IntPointer. x) i))))
+
+(defn short-ptr ^ShortPointer
+  ([x] x)
+  ([^ShortPointer x ^long i]
+   (safe (.position (ShortPointer. x) i))))
+
+(defn byte-ptr ^BytePointer([x] x)
+  ([^BytePointer x ^long i]
+   (safe (.position (BytePointer. x) i))))
+
+(defn clong-ptr ^CLongPointer
+  ([x] x)
+  ([^CLongPointer x ^long i]
+   (safe (.position (CLongPointer. x) i))))
+
+(defn clong-ptr ^SizeTPointer
+  ([x] x)
+  ([^SizeTPointer x ^long i]
+   (safe (.position (SizeTPointer. x) i))))
+
+(defn bool-ptr ^BoolPointer
+  ([x] x)
+  ([^BoolPointer x ^long i]
+   (safe (.position (BoolPointer. x) i))))
+
 (defn byte-buffer [^Pointer p]
   (.asByteBuffer p))
 
@@ -218,6 +268,9 @@
          :capacity (.capacity this)
          :deallocator (.invoke get-deallocator this empty-array)
          nil)))
+    Wrapper
+    (extract [this]
+      (if-not (null? this) this nil))
     PointerCreator
     (pointer
       ([this]
