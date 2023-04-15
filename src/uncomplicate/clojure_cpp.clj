@@ -128,50 +128,6 @@
     (dragan-says-ex "NULL pointer is not allowed in this part of code. Please do not use non-initialized pointers here."
                     {:x x})))
 
-(defn float-ptr ^FloatPointer
-  ([x] (safe x))
-  ([^FloatPointer x ^long i]
-   (safe (.position (FloatPointer. x) i))))
-
-(defn double-ptr ^DoublePointer
-  ([x] (safe x))
-  ([^FloatPointer x ^long i]
-   (safe (.position (FloatPointer. x) i))))
-
-(defn long-ptr ^LongPointer
-  ([x] x)
-  ([^LongPointer x ^long i]
-   (safe (.position (LongPointer. x) i))))
-
-(defn int-ptr ^IntPointer
-  ([x] x)
-  ([^IntPointer x ^long i]
-   (safe (.position (IntPointer. x) i))))
-
-(defn short-ptr ^ShortPointer
-  ([x] x)
-  ([^ShortPointer x ^long i]
-   (safe (.position (ShortPointer. x) i))))
-
-(defn byte-ptr ^BytePointer([x] x)
-  ([^BytePointer x ^long i]
-   (safe (.position (BytePointer. x) i))))
-
-(defn clong-ptr ^CLongPointer
-  ([x] x)
-  ([^CLongPointer x ^long i]
-   (safe (.position (CLongPointer. x) i))))
-
-(defn clong-ptr ^SizeTPointer
-  ([x] x)
-  ([^SizeTPointer x ^long i]
-   (safe (.position (SizeTPointer. x) i))))
-
-(defn bool-ptr ^BoolPointer
-  ([x] x)
-  ([^BoolPointer x ^long i]
-   (safe (.position (BoolPointer. x) i))))
-
 (defn byte-buffer [^Pointer p]
   (.asByteBuffer p))
 
@@ -193,6 +149,60 @@
   (long-pointer [this])
   (float-pointer [this])
   (double-pointer [this]))
+
+(defn float-ptr
+  (^FloatPointer [x]
+   (safe x))
+  (^FloatPointer [x ^long i]
+   (safe (position! (float-pointer x) i))))
+
+(defn double-ptr
+  (^DoublePointer [x]
+   (safe x))
+  (^DoublePointer [x ^long i]
+   (safe (position! (double-pointer x) i))))
+
+(defn long-ptr
+  (^LongPointer [x]
+   (safe x))
+  (^LongPointer [x ^long i]
+   (safe (position! (long-pointer x) i))))
+
+(defn int-ptr
+  (^IntPointer [x]
+   (safe x))
+  (^IntPointer [x ^long i]
+   (safe (position! (int-pointer x) i))))
+
+(defn short-ptr
+  (^ShortPointer [x]
+   (safe x))
+  (^ShortPointer [x ^long i]
+   (safe (position! (short-pointer x) i))))
+
+(defn byte-ptr
+  (^BytePointer [x]
+   (safe x))
+  (^BytePointer [x ^long i]
+   (safe (position! (byte-pointer x) i))))
+
+(defn clong-ptr
+  (^CLongPointer [x]
+   (safe x))
+  (^CLongPointer [x ^long i]
+   (safe (position! (clong-pointer x) i))))
+
+(defn clong-ptr
+  (^SizeTPointer [x]
+   (safe x))
+  (^SizeTPointer [x ^long i]
+   (safe (position! (size-t-pointer x) i))))
+
+(defn bool-ptr
+  (^BoolPointer [x]
+   (safe x))
+  (^BoolPointer [x ^long i]
+   (safe (position! (bool-pointer x) i))))
 
 (defprotocol Accessor
   (get! [pointer dst!] [pointer dst! offset length])
