@@ -357,7 +357,7 @@
       ([this]
        this)
       ([this i]
-       (.getPointer this i)))
+       (.getPointer this ^long i)))
     TypedPointerCreator
     (byte-pointer [this]
       (BytePointer. this))
@@ -554,7 +554,8 @@
 (extend-protocol PutPointer
   Pointer
   (put! [src dst]
-    (.put ^Pointer dst ^Pointer src))
+    (.put ^Pointer dst ^Pointer src)
+    dst)
   Double
   (put-pointer* [x p]
     (.put ^DoublePointer p (double x) ))
