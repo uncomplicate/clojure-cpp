@@ -112,6 +112,11 @@
 (defn sizeof ^long [^Pointer p]
   (.sizeof p))
 
+(defn safe ^Pointer [^Pointer x]
+  (if-not (null? x)
+    x
+    (dragan-says-ex "NULL pointer is not allowed in this part of code. Please do not use non-initialized pointers here."
+                    {:x x})))
 (defn get-pointer
   (^Pointer [^Pointer p]
    (.getPointer p))
@@ -122,12 +127,6 @@
 
 ;; ================= Buffer =================================
 
-(defn safe [x]
-  (if-not (null? x)
-    x
-    (dragan-says-ex "NULL pointer is not allowed in this part of code. Please do not use non-initialized pointers here."
-                    {:x x})))
-
 (defn byte-buffer [^Pointer p]
   (.asByteBuffer p))
 
@@ -135,7 +134,7 @@
   (.asBuffer p))
 
 (defprotocol PointerCreator
-  (pointer [this] [this i]))
+  (pointer* [this] [this i]))
 
 (defprotocol TypedPointerCreator
   (pointer-pointer [this] [this charset])
@@ -150,6 +149,24 @@
   (float-pointer [this])
   (double-pointer [this]))
 
+(defn pointer
+  (^Pointer [x]
+   (pointer* x))
+  (^Pointer [x i]
+   (pointer* x i)))
+
+(defn ptr*
+  (^Pointer [x]
+   x)
+  (^Pointer [x ^long i]
+   (get-pointer x i)))
+
+(defn ptr
+  (^Pointer [x]
+   (safe x))
+  (^Pointer [x ^long i]
+   (get-pointer (safe x) i)))
+
 (defn float-ptr*
   (^FloatPointer [x]
    x)
@@ -160,103 +177,103 @@
   (^FloatPointer [x]
    (safe x))
   (^FloatPointer [x ^long i]
-   (safe (get-pointer (pointer x) FloatPointer i))))
+   (get-pointer (safe x) FloatPointer i)))
 
 (defn double-ptr*
   (^DoublePointer [x]
    x)
   (^DoublePointer [x ^long i]
-   (safe (get-pointer x i))))
+   (get-pointer x i)))
 
 (defn double-ptr
   (^DoublePointer [x]
    (safe x))
   (^DoublePointer [x ^long i]
-   (safe (get-pointer (pointer x) DoublePointer i))))
+   (get-pointer (safe x) DoublePointer i)))
 
 (defn long-ptr*
   (^LongPointer [x]
    x)
   (^LongPointer [x ^long i]
-   (safe (get-pointer x i))))
+   (get-pointer x i)))
 
 (defn long-ptr
   (^LongPointer [x]
    (safe x))
   (^LongPointer [x ^long i]
-   (safe (get-pointer (pointer x) LongPointer i))))
+   (get-pointer (safe x) LongPointer i)))
 
 (defn int-ptr*
   (^IntPointer [x]
    x)
   (^IntPointer [x ^long i]
-   (safe (get-pointer x i))))
+   (get-pointer x i)))
 
 (defn int-ptr
   (^IntPointer [x]
    (safe x))
   (^IntPointer [x ^long i]
-   (safe (get-pointer (pointer x) IntPointer i))))
+   (get-pointer (safe x) IntPointer i)))
 
 (defn short-ptr*
   (^ShortPointer [x]
    x)
   (^ShortPointer [x ^long i]
-   (safe (get-pointer x i))))
+   (get-pointer x i)))
 
 (defn short-ptr
   (^ShortPointer [x]
    (safe x))
   (^ShortPointer [x ^long i]
-   (safe (get-pointer (pointer x) ShortPointer i))))
+   (get-pointer (safe x) ShortPointer i)))
 
 (defn byte-ptr*
   (^BytePointer [x]
    x)
   (^BytePointer [x ^long i]
-   (safe (get-pointer x i))))
+   (get-pointer x i)))
 
 (defn byte-ptr
   (^BytePointer [x]
    (safe x))
   (^BytePointer [x ^long i]
-   (safe (get-pointer (pointer x) BytePointer i))))
+   (get-pointer (safe x) BytePointer i)))
 
 (defn clong-ptr*
   (^CLongPointer [x]
    x)
   (^CLongPointer [x ^long i]
-   (safe (get-pointer x i))))
+   (get-pointer x i)))
 
 (defn clong-ptr
   (^CLongPointer [x]
    (safe x))
   (^CLongPointer [x ^long i]
-   (safe (get-pointer (pointer x) CLongPointer i))))
+   (get-pointer (safe x) CLongPointer i)))
 
 (defn size-t-ptr*
   (^SizeTPointer [x]
    x)
   (^SizeTPointer [x ^long i]
-   (safe (get-pointer x i))))
+   (get-pointer x i)))
 
 (defn size-t-ptr
   (^SizeTPointer [x]
    (safe x))
   (^SizeTPointer [x ^long i]
-   (safe (get-pointer (pointer x) SizeTPointer i))))
+   (get-pointer (safe x) SizeTPointer i)))
 
 (defn bool-ptr*
   (^BoolPointer [x]
    x)
   (^BoolPointer [x ^long i]
-   (safe (get-pointer x i))))
+   (get-pointer x i)))
 
 (defn bool-ptr
   (^BoolPointer [x]
    (safe x))
   (^BoolPointer [x ^long i]
-   (safe (get-pointer (pointer x) BoolPointer i))))
+   (get-pointer (safe x) BoolPointer i)))
 
 (defprotocol Accessor
   (get! [pointer dst!] [pointer dst! offset length])
@@ -336,11 +353,11 @@
     (extract [this]
       (if-not (null? this) this nil))
     PointerCreator
-    (pointer
+    (pointer*
       ([this]
-       (Pointer. this))
+       this)
       ([this i]
-       (.position (Pointer. this) i)))
+       (.getPointer this i)))
     TypedPointerCreator
     (byte-pointer [this]
       (BytePointer. this))
@@ -365,13 +382,11 @@
 
 (extend-type nil
   PointerCreator
-  (pointer
+  (pointer*
     ([_]
      (Pointer.))
     ([this i]
-     (.position (Pointer.) i)))
-  (pointer [_]
-    (Pointer.))
+     (Pointer.)))
   TypedPointerCreator
   (byte-pointer [_]
     (BytePointer.))
@@ -457,7 +472,7 @@
 
 (extend-type Buffer
   PointerCreator
-  (pointer
+  (pointer*
     ([b]
      (Pointer. b))
     ([b i]
@@ -465,7 +480,7 @@
 
 (extend-type ByteBuffer
   PointerCreator
-  (pointer
+  (pointer*
     ([this]
      (BytePointer. this))
     ([this i]
@@ -489,7 +504,7 @@
 (defmacro extend-buffer [buffer-class pt method]
   `(extend-type ~buffer-class
      PointerCreator
-     (pointer
+     (pointer*
        ([this#]
         (create-new* ~pt ~buffer-class this#))
        ([this# i#]
@@ -517,7 +532,7 @@
 (defmacro extend-array [array-class array-type pt method]
   `(extend-type ~array-class
      PointerCreator
-     (pointer
+     (pointer*
        ([this#]
         (create-new* ~pt ~array-type this#))
        ([this# i#]
@@ -633,7 +648,7 @@
 
 (extend-type (Class/forName "[J")
   PointerCreator
-  (pointer
+  (pointer*
     ([this]
      (LongPointer. ^longs this))
     ([this i]
@@ -652,7 +667,7 @@
     (.put ^PointerPointer dst ^"[[J" src)))
 
 (extend-type String
-  PointerCreator
+  TypedPointerCreator
   (byte-pointer
     ([s]
      (BytePointer. s))
@@ -794,11 +809,11 @@
 (defmacro extend-pointer [pt entry-type array-type convert-fn]
   `(extend-type ~pt
      PointerCreator
-     (pointer
+     (pointer*
        ([this#]
-        (create-new* ~pt ~pt this#))
+        this#)
        ([this# i#]
-        (position! (create-new* ~pt ~pt this#) i#)))
+        (get-pointer this# i#)))
      Accessor
      (get-entry
        ([this#]
