@@ -82,7 +82,7 @@
 
 ;; ================= Pointer =================================
 
-(defn address [^Pointer p]
+(defn address ^long [^Pointer p]
   (.address p))
 
 (defn null? [^Pointer p]
@@ -113,11 +113,11 @@
   (.sizeof p))
 
 (defn get-pointer
-  ([^Pointer p]
+  (^Pointer [^Pointer p]
    (.getPointer p))
-  ([^Pointer p ^long i]
+  (^Pointer [^Pointer p ^long i]
    (.getPointer p i))
-  ([^Pointer p type ^long i]
+  (^Pointer [^Pointer p type ^long i]
    (.getPointer p type i)))
 
 ;; ================= Buffer =================================
@@ -150,59 +150,113 @@
   (float-pointer [this])
   (double-pointer [this]))
 
+(defn float-ptr*
+  (^FloatPointer [x]
+   x)
+  (^FloatPointer [x ^long i]
+   (get-pointer x i)))
+
 (defn float-ptr
   (^FloatPointer [x]
    (safe x))
   (^FloatPointer [x ^long i]
-   (safe (position! (float-pointer x) i))))
+   (safe (get-pointer (pointer x) FloatPointer i))))
+
+(defn double-ptr*
+  (^DoublePointer [x]
+   x)
+  (^DoublePointer [x ^long i]
+   (safe (get-pointer x i))))
 
 (defn double-ptr
   (^DoublePointer [x]
    (safe x))
   (^DoublePointer [x ^long i]
-   (safe (position! (double-pointer x) i))))
+   (safe (get-pointer (pointer x) DoublePointer i))))
+
+(defn long-ptr*
+  (^LongPointer [x]
+   x)
+  (^LongPointer [x ^long i]
+   (safe (get-pointer x i))))
 
 (defn long-ptr
   (^LongPointer [x]
    (safe x))
   (^LongPointer [x ^long i]
-   (safe (position! (long-pointer x) i))))
+   (safe (get-pointer (pointer x) LongPointer i))))
+
+(defn int-ptr*
+  (^IntPointer [x]
+   x)
+  (^IntPointer [x ^long i]
+   (safe (get-pointer x i))))
 
 (defn int-ptr
   (^IntPointer [x]
    (safe x))
   (^IntPointer [x ^long i]
-   (safe (position! (int-pointer x) i))))
+   (safe (get-pointer (pointer x) IntPointer i))))
+
+(defn short-ptr*
+  (^ShortPointer [x]
+   x)
+  (^ShortPointer [x ^long i]
+   (safe (get-pointer x i))))
 
 (defn short-ptr
   (^ShortPointer [x]
    (safe x))
   (^ShortPointer [x ^long i]
-   (safe (position! (short-pointer x) i))))
+   (safe (get-pointer (pointer x) ShortPointer i))))
+
+(defn byte-ptr*
+  (^BytePointer [x]
+   x)
+  (^BytePointer [x ^long i]
+   (safe (get-pointer x i))))
 
 (defn byte-ptr
   (^BytePointer [x]
    (safe x))
   (^BytePointer [x ^long i]
-   (safe (position! (byte-pointer x) i))))
+   (safe (get-pointer (pointer x) BytePointer i))))
+
+(defn clong-ptr*
+  (^CLongPointer [x]
+   x)
+  (^CLongPointer [x ^long i]
+   (safe (get-pointer x i))))
 
 (defn clong-ptr
   (^CLongPointer [x]
    (safe x))
   (^CLongPointer [x ^long i]
-   (safe (position! (clong-pointer x) i))))
+   (safe (get-pointer (pointer x) CLongPointer i))))
 
-(defn clong-ptr
+(defn size-t-ptr*
+  (^SizeTPointer [x]
+   x)
+  (^SizeTPointer [x ^long i]
+   (safe (get-pointer x i))))
+
+(defn size-t-ptr
   (^SizeTPointer [x]
    (safe x))
   (^SizeTPointer [x ^long i]
-   (safe (position! (size-t-pointer x) i))))
+   (safe (get-pointer (pointer x) SizeTPointer i))))
+
+(defn bool-ptr*
+  (^BoolPointer [x]
+   x)
+  (^BoolPointer [x ^long i]
+   (safe (get-pointer x i))))
 
 (defn bool-ptr
   (^BoolPointer [x]
    (safe x))
   (^BoolPointer [x ^long i]
-   (safe (position! (bool-pointer x) i))))
+   (safe (get-pointer (pointer x) BoolPointer i))))
 
 (defprotocol Accessor
   (get! [pointer dst!] [pointer dst! offset length])
@@ -344,8 +398,7 @@
   ([constructor size]
    `(if (<= 0 (long ~size))
       (new ~constructor (long ~size))
-      (dragan-says-ex "Array size must be 0 or larger."
-                      {:size ~size})))
+      (dragan-says-ex "Array size must be 0 or larger." {:size ~size})))
   ([constructor arg-type arg]
    `(new ~constructor ~(with-meta arg {:tag arg-type}))))
 
@@ -754,9 +807,11 @@
         (.get this# (long i#))))
      (get!
        ([p# arr#]
-        (access* get ~pt p# ~array-type arr#))
+        (access* get ~pt p# ~array-type arr#)
+        arr#)
        ([p# arr# offset# length#]
-        (access* get ~pt p# ~array-type arr# offset# length#)))
+        (access* get ~pt p# ~array-type arr# offset# length#)
+        arr#))
      (put!
        ([p# obj#]
         (if (sequential? obj#)

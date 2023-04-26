@@ -65,6 +65,7 @@
      (zero! bp) => bp
      (get-entry bp 0) => (cast 0)
      (put! bp1 [10 20 30]) => bp1
+     (seq (get! bp1 (array 3))) => (map cast [10 20 30])
      (pointer-seq bp) => (map cast [10 20 30])
      (pointer-seq bp2) => (map cast [100 101 102])
      bp3 =not=> bp2
