@@ -8,7 +8,7 @@
 
 (ns uncomplicate.clojure-cpp
   (:require [uncomplicate.commons
-             [core :refer [Releaseable release let-release Info info Viewable view Wrapper]]
+             [core :refer [Releaseable release let-release Info info Viewable view Wrapper Wrappable]]
              [utils :refer [dragan-says-ex]]])
   (:import [java.nio Buffer ByteBuffer CharBuffer ShortBuffer IntBuffer LongBuffer FloatBuffer
             DoubleBuffer]
@@ -277,11 +277,15 @@
 
 (defprotocol Accessor
   (get! [pointer dst!] [pointer dst! offset length])
-  (put! [pointer! src] [pointer! i x] [pointer! src offset length])
-  (get-entry [pointer] [pointer i]))
+  (put! [pointer! src] [pointer! src offset length])
+  (get-entry [pointer] [pointer i])
+  (put-entry! [pointer value] [pointer i value]))
+
+(defprotocol PutEntry
+  (put-entry* [value pointer] [value i pointer]))
 
 (defprotocol PutPointer
-  (put-pointer* [src dst] [arg1 src dst]))
+  (put-pointer-pointer* [src dst] [arg src dst]))
 
 (def ^:const pointer-types
   {DoublePointer :double
@@ -326,10 +330,7 @@
   (extend-type Pointer
     Releaseable
     (release [this]
-      (if (.invoke get-deallocator this empty-array)
-        (do (.deallocate this)
-            (.setNull this))
-        (free! this))
+      (.deallocate this)
       true)
     Info
     (info
@@ -352,6 +353,9 @@
     Wrapper
     (extract [this]
       (if-not (null? this) this nil))
+    Wrappable
+    (wrap [this]
+      this)
     PointerCreator
     (pointer*
       ([this]
@@ -447,6 +451,23 @@
 (extend-creator Integer)
 (extend-creator Long)
 
+(defmacro extend-number [nt pt]
+  `(extend-type ~nt
+     PointerCreator
+     (pointer*
+       ([this#]
+        (.put (new ~pt 1) this#))
+       ([this# _#]
+        (.put (new ~pt 1) this#)))))
+
+(extend-number Double DoublePointer)
+(extend-number Float FloatPointer)
+(extend-number Long LongPointer)
+(extend-number Integer IntPointer)
+(extend-number Short ShortPointer)
+(extend-number Byte BytePointer)
+(extend-number Character CharPointer)
+
 (extend-type Seqable
   TypedPointerCreator
   (byte-pointer [this]
@@ -540,99 +561,93 @@
      TypedPointerCreator
      (~method [this#]
       (create-new* ~pt ~array-type this#))
-     PutPointer
-     (put-pointer* [src# dst#]
-       (access* put ~pt dst# ~array-type src#))))
+     PutEntry
+     (put-entry*
+       ([this# p#]
+        (access* put ~pt p# ~array-type this#)))))
 
+(extend-array (Class/forName "[F") floats FloatPointer float-pointer)
+(extend-array (Class/forName "[D") doubles DoublePointer double-pointer)
 (extend-array (Class/forName "[C") chars CharPointer char-pointer)
 (extend-array (Class/forName "[B") bytes BytePointer byte-pointer)
 (extend-array (Class/forName "[S") shorts ShortPointer short-pointer)
 (extend-array (Class/forName "[I") ints IntPointer int-pointer)
-(extend-array (Class/forName "[F") floats FloatPointer float-pointer)
-(extend-array (Class/forName "[D") doubles DoublePointer double-pointer)
+(extend-array (Class/forName "[J") longs LongPointer long-pointer)
 
-(extend-protocol PutPointer
-  Pointer
-  (put! [src dst]
-    (.put ^Pointer dst ^Pointer src)
-    dst)
-  Double
-  (put-pointer* [x p]
-    (.put ^DoublePointer p (double x) ))
-  Float
-  (put-pointer* [x p]
-    (.put ^FloatPointer p (float x)))
-  Long
-  (put-pointer* [x p]
-    (.put ^LongPointer p (long x)))
-  Integer
-  (put-pointer* [x p]
-    (.put ^IntPointer p (int x)))
-  Short
-  (put-pointer* [x p]
-    (.put ^ShortPointer p (short x)))
-  Character
-  (put-pointer* [x p]
-    (.put ^CharPointer p (char x)))
-  Byte
-  (put-pointer* [x p]
-    (.put ^BytePointer p (byte x))))
+
+
+(extend-type (Class/forName "[J")
+  TypedPointerCreator
+  (clong-pointer [this]
+    (CLongPointer. ^longs this))
+  (size-t-pointer [this]
+    (SizeTPointer. ^longs this))
+  (long-pointer [this]
+    (LongPointer. ^longs this)))
 
 (extend-type (Class/forName "[[B")
   TypedPointerCreator
   (pointer-pointer [this]
     (PointerPointer. ^"[[B" this))
   PutPointer
-  (put-pointer* [src dst]
-    (.put ^PointerPointer dst ^"[[B" src)))
+  (put-pointer-pointer* [this pp]
+    (.put ^PointerPointer pp ^"[[B" this)))
 
 (extend-type (Class/forName "[[S")
   TypedPointerCreator
   (pointer-pointer [this]
     (PointerPointer. ^"[[S" this))
   PutPointer
-  (put-pointer* [src dst]
-    (.put ^PointerPointer dst ^"[[S" src)))
+  (put-pointer-pointer* [this pp]
+    (.put ^PointerPointer pp ^"[[S" this)))
 
 (extend-type (Class/forName "[[I")
   TypedPointerCreator
   (pointer-pointer [this]
     (PointerPointer. ^"[[I" this))
   PutPointer
-  (put-pointer* [src dst]
-    (.put ^PointerPointer dst ^"[[I" src)))
+  (put-pointer-pointer* [this pp]
+    (.put ^PointerPointer pp ^"[[I" this)))
+
+(extend-type (Class/forName "[[J")
+  TypedPointerCreator
+  (pointer-pointer [this]
+    (PointerPointer. ^"[[J" this))
+  PutPointer
+  (put-pointer-pointer* [this pp]
+    (.put ^PointerPointer pp ^"[[J" this)))
 
 (extend-type (Class/forName "[[F")
   TypedPointerCreator
   (pointer-pointer [this]
     (PointerPointer. ^"[[F" this))
   PutPointer
-  (put-pointer* [src dst]
-    (.put ^PointerPointer dst ^"[[F" src)))
+  (put-pointer-pointer* [this pp]
+    (.put ^PointerPointer pp ^"[[F" this)))
 
 (extend-type (Class/forName "[[D")
   TypedPointerCreator
   (pointer-pointer [this]
     (PointerPointer. ^"[[D" this))
   PutPointer
-  (put-pointer* [src dst]
-    (.put ^PointerPointer dst ^"[[D" src)))
+  (put-pointer-pointer* [this pp]
+    (.put ^PointerPointer pp ^"[[D" this)))
 
 (extend-type (Class/forName "[[C")
   TypedPointerCreator
   (pointer-pointer [this]
     (PointerPointer. ^"[[C" this))
   PutPointer
-  (put-pointer* [src dst]
-    (.put ^PointerPointer dst ^"[[C" src)))
+  (put-pointer-pointer* [this pp]
+    (.put ^PointerPointer pp ^"[[C" this)))
 
 (extend-type (Class/forName "[Lorg.bytedeco.javacpp.Pointer;")
   TypedPointerCreator
   (pointer-pointer [this]
     (PointerPointer. ^"[Lorg.bytedeco.javacpp.Pointer;" this))
   PutPointer
-  (put-pointer* [src dst]
-    (.put ^PointerPointer dst ^"[Lorg.bytedeco.javacpp.Pointer;" src)))
+  (put-pointer-pointer* [this pp]
+    (.put ^PointerPointer pp ^"[Lorg.bytedeco.javacpp.Pointer;" this)))
 
 (extend-type (Class/forName "[Ljava.lang.String;")
   TypedPointerCreator
@@ -644,28 +659,8 @@
        (PointerPointer. ^"[Ljava.lang.String;" this ^String charset)
        (PointerPointer. ^"[Ljava.lang.String;" this ^Charset charset))))
   PutPointer
-  (put-pointer* [src dst]
-    (.putString ^PointerPointer dst ^"[Ljava.lang.String;" src)))
-
-(extend-type (Class/forName "[J")
-  PointerCreator
-  (pointer*
-    ([this]
-     (LongPointer. ^longs this))
-    ([this i]
-     (.position (LongPointer. ^longs this) (long i))))
-  TypedPointerCreator
-  (pointer-pointer [this]
-    (PointerPointer. ^"[[J" this))
-  (clong-pointer [this]
-    (CLongPointer. ^longs this))
-  (size-t-pointer [this]
-    (SizeTPointer. ^longs this))
-  (long-pointer [this]
-    (LongPointer. ^longs this))
-  PutPointer
-  (put-pointer* [src dst]
-    (.put ^PointerPointer dst ^"[[J" src)))
+  (put-pointer-pointer* [this pp]
+    (.putString ^PointerPointer pp ^"[Ljava.lang.String;" this)))
 
 (extend-type String
   TypedPointerCreator
@@ -677,18 +672,18 @@
        (BytePointer. s ^String charset)
        (BytePointer. s ^Charset charset))))
   PutPointer
-  (put-pointer* [charset-name src dst]
-    (.putString ^PointerPointer dst ^"[Ljava.lang.String;" src ^String charset-name)))
+  (put-pointer-pointer* [charset-name src pp]
+    (.putString ^PointerPointer pp ^"[Ljava.lang.String;" src ^String charset-name)))
 
 (extend-type Charset
   PutPointer
-  (put-pointer* [charset src dst]
-    (.putString ^PointerPointer dst ^"[Ljava.lang.String;" src ^String charset)))
+  (put-pointer-pointer* [charset src pp]
+    (.putString ^PointerPointer pp ^"[Ljava.lang.String;" src ^String charset)))
 
 (defn get-string
-  ([^BytePointer p]
+  (^String [^BytePointer p]
    (.getString p))
-  ([^BytePointer p charset]
+  (^String [^BytePointer p charset]
    (if (string? charset)
      (.getString p ^String charset)
      (.getString p ^Charset charset))))
@@ -699,7 +694,7 @@
   ([^BytePointer p ^long i]
    (.getPointerValue p i)))
 
-(defn set-pointer-value!
+(defn put-pointer-value!
   [^BytePointer p ^long i ^Pointer x]
   (.putPointerValue p i x)
   p)
@@ -795,7 +790,7 @@
   p)
 
 (defn get-string-bytes ^bytes [^BytePointer p]
-  (.getStringBytes p ))
+  (.getStringBytes p))
 
 (defn pointer-seq [^Pointer p]
   (letfn [(pointer-seq* [p ^long i ^long n]
@@ -821,6 +816,13 @@
         (.get this#))
        ([this# i#]
         (.get this# (long i#))))
+     (put-entry!
+       ([this# value#]
+        (.put this# (~entry-type value#))
+        this#)
+       ([this# i# value#]
+        (.put this# i# (~entry-type value#))
+        this#))
      (get!
        ([p# arr#]
         (access* get ~pt p# ~array-type arr#)
@@ -831,23 +833,79 @@
      (put!
        ([p# obj#]
         (if (sequential? obj#)
-          (access* put ~pt p# ~array-type (~convert-fn obj#))
-          (put-pointer* obj# p#))
+          (.put p# (~array-type (~convert-fn obj#)))
+          (.put p# (~array-type obj#)))
         p#)
-       ([this# i# x#]
-        (.put this# (long i#) (~entry-type x#)))
-       ([p# arr# offset# length#]
-        (access* put ~pt p# ~array-type arr# offset# length#)))))
+       ([p# obj# offset# length#]
+        (if (sequential? obj#)
+          (.put p# (~array-type (~convert-fn (take length# (drop offset# obj#)))))
+          (.put p# obj# offset# length#))))))
 
 (extend-pointer CLongPointer long longs long-array)
 (extend-pointer SizeTPointer long longs long-array)
-(extend-pointer BytePointer byte bytes byte-array)
 (extend-pointer CharPointer char chars #(char-array (map char %)))
 (extend-pointer ShortPointer short shorts short-array)
 (extend-pointer IntPointer int ints int-array)
 (extend-pointer LongPointer long longs long-array)
 (extend-pointer FloatPointer float floats float-array)
 (extend-pointer DoublePointer double doubles double-array)
+
+(extend-type BytePointer
+     PointerCreator
+     (pointer*
+       ([this]
+        this)
+       ([this i]
+        (get-pointer this i)))
+     Accessor
+     (get-entry
+       ([this]
+        (.get this))
+       ([this i]
+        (.get this (long i))))
+     (put-entry!
+       ([this value]
+        (put-entry* value this)
+        this)
+       ([this i value]
+        (put-entry* value i this)
+        this))
+     (get!
+       ([p arr]
+        (.get p (bytes arr))
+        arr)
+       ([p arr offset length]
+        (.get p (bytes arr) offset length)
+        arr))
+     (put!
+       ([p obj]
+        (if (sequential? obj)
+          (.put p (byte-array obj))
+          (.put p (bytes obj)))
+        p)
+       ([p obj offset length]
+        (if (sequential? obj)
+          (.put p (byte-array (take length (drop offset obj))))
+          (.put p obj offset length)))))
+
+(defmacro extend-entry [number-type put-method]
+  `(extend-type ~number-type
+     PutEntry
+     (put-entry*
+       ([this# p#]
+        (~put-method p# this#))
+       ([this# i# p#]
+        (~put-method p# i# this#)))))
+
+(extend-entry Double put-double!)
+(extend-entry Float put-float!)
+(extend-entry Long put-long!)
+(extend-entry Integer put-int!)
+(extend-entry Short put-short!)
+(extend-entry Boolean put-bool!)
+(extend-entry Byte put-byte!)
+(extend-entry Character put-char!)
+(extend-entry Pointer put-pointer-value!)
 
 (extend-type PointerPointer
   Accessor
@@ -856,13 +914,17 @@
      (.get this))
     ([this i]
      (.get this (long i))))
+  (put-entry!
+    ([this value]
+     (.put this ^Pointer value)
+     this)
+    ([this i value]
+     (.put this i ^Pointer value)
+     this))
   (put!
     ([p obj]
-     (put-pointer* obj p)
+     (put-pointer-pointer* obj p)
      p)
-    ([this arg1 arg2]
-     (put-pointer* arg2 arg1 this)
-     this))
-  PutPointer
-  (put-pointer* [i src dst]
-    (.put ^PointerPointer dst i ^Pointer src)))
+    ([this src arg]
+     (put-pointer-pointer* arg src this)
+     this)))

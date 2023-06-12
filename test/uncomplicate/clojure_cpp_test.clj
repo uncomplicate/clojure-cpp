@@ -38,7 +38,7 @@
    (free! p) => p
    (null? p1) => false
    (release p1) => true
-   (null? p1) => true
+   (null? p1) => false
    (null? p2) => false
    (free! p2) => p2
    (null? p2) => true
@@ -59,7 +59,7 @@
      (get-entry bp1 0) =not=> (cast 0)
      (zero! bp) => bp
      (get-entry bp1 0) => (cast 0)
-     (put! bp 0 1) => bp
+     (put-entry! bp 0 1) => bp
      (get-entry bp 0) => (cast 1)
      (get-entry bp1 0) => (cast 1)
      (zero! bp) => bp
