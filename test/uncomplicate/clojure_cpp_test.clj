@@ -85,3 +85,30 @@
 (test-array-pointer size-t-pointer int long-array)
 (test-array-pointer clong-pointer long long-array)
 (test-array-pointer clong-pointer int long-array)
+
+(facts
+ "Test PointerPointer"
+ (let [pp (pointer-pointer 3)
+       dp (double-pointer [1 2 3 4 5])
+       ip (int-pointer [10 20 30])
+       s (pointer "Just some random string")]
+   (put-entry! pp 2 s) => pp
+   (get-entry pp 2) => s
+   (put-entry! pp 1 dp) => pp
+   (get-entry (double-pointer (get-entry pp 1)) 3) => 4.0
+   (put-entry! pp 0 ip) => pp
+   (get-entry (int-pointer (get-entry pp 0)) 1) => 20
+   (release pp) => true
+   (null? pp) => true))
+
+(facts
+ "Test PointerPointer from sequence."
+ (let [dp (double-pointer [1 2 3 4 5])
+       ip (int-pointer [10 20 30])
+       s "Just some random string"
+       pp (pointer-pointer [ip dp s])]
+   (get-string (byte-pointer (get-entry pp 2))) => s
+   (get-entry (double-pointer (get-entry pp 1)) 3) => 4.0
+   (get-entry (int-pointer (get-entry pp 0)) 1) => 20
+   (release pp) => true
+   (null? pp) => true))

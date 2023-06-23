@@ -8,7 +8,8 @@
 
 (ns uncomplicate.clojure-cpp
   (:require [uncomplicate.commons
-             [core :refer [Releaseable release let-release Info info Viewable view Wrapper Wrappable]]
+             [core :refer [Releaseable release let-release Info info Viewable view Wrapper Wrappable
+                           Bytes Entries bytesize* sizeof*]]
              [utils :refer [dragan-says-ex]]])
   (:import [java.nio Buffer ByteBuffer CharBuffer ShortBuffer IntBuffer LongBuffer FloatBuffer
             DoubleBuffer]
@@ -63,10 +64,10 @@
 (defn memcmp ^long [^Pointer p1 ^Pointer p2 ^long size]
   (Pointer/memcmp p1 p2 size))
 
-(defn memcpy! [^Pointer dst ^Pointer src ^long size]
+(defn memcpy! [^Pointer src ^Pointer dst ^long size]
   (Pointer/memcpy dst src size))
 
-(defn memmove! [^Pointer dst ^Pointer src ^long size]
+(defn memmove! [^Pointer src ^Pointer dst ^long size]
   (Pointer/memmove dst src size))
 
 (defn memset! [^Pointer dst ch ^long size]
@@ -109,9 +110,6 @@
 (defn element-count ^long [^Pointer p]
   (max 0 (- (.limit p) (.position p))))
 
-(defn sizeof ^long [^Pointer p]
-  (.sizeof p))
-
 (defn safe ^Pointer [^Pointer x]
   (if-not (null? x)
     x
@@ -137,17 +135,17 @@
   (pointer* [this] [this i]))
 
 (defprotocol TypedPointerCreator
-  (pointer-pointer [this] [this charset])
-  (byte-pointer [this] [this charset])
-  (bool-pointer [this])
-  (clong-pointer [this])
-  (size-t-pointer [this])
-  (char-pointer [this])
-  (short-pointer [this])
-  (int-pointer [this])
-  (long-pointer [this])
-  (float-pointer [this])
-  (double-pointer [this]))
+  (^PointerPointer pointer-pointer [this] [this charset])
+  (^BytePointer byte-pointer [this] [this charset])
+  (^BoolPointer bool-pointer [this])
+  (^ClongPointer clong-pointer [this])
+  (^SizeTPointer size-t-pointer [this])
+  (^CharPointer char-pointer [this])
+  (^ShortPointer short-pointer [this])
+  (^IntPointer int-pointer [this])
+  (^LongPointer long-pointer [this])
+  (^FloatPointer float-pointer [this])
+  (^DoublePointer double-pointer [this]))
 
 (defn pointer
   (^Pointer [x]
@@ -324,6 +322,24 @@
    Byte/TYPE BytePointer
    Character/TYPE CharPointer})
 
+(defn type-pointer [t]
+  (case t
+    :float float-pointer
+    :double double-pointer
+    :long long-pointer
+    :int int-pointer
+    :short short-pointer
+    :byte byte-pointer
+    :char char-pointer
+    :size-t size-t-pointer
+    :clong clong-pointer
+    :pointer pointer-pointer
+    :bool bool-pointer
+    nil))
+
+(defn ^:private divide-capacity [^Pointer src ^Pointer dst]
+  (.capacity dst (quot (* (.sizeof src) (element-count src)) (.sizeof dst))))
+
 (let [get-deallocator (doto (.getDeclaredMethod Pointer "deallocator" (make-array Class 0))
                         (.setAccessible true))
       empty-array (into-array [])]
@@ -356,6 +372,14 @@
     Wrappable
     (wrap [this]
       this)
+    Bytes
+    (bytesize* [this]
+      (* (.sizeof this) (element-count this)))
+    Entries
+    (sizeof* [this]
+      (.sizeof this))
+    (size* [this]
+      (element-count this))
     PointerCreator
     (pointer*
       ([this]
@@ -364,25 +388,25 @@
        (.getPointer this ^long i)))
     TypedPointerCreator
     (byte-pointer [this]
-      (BytePointer. this))
+      (.capacity (BytePointer. this) (bytesize* this)))
     (clong-pointer [this]
-      (CLongPointer. this))
+      (divide-capacity this (CLongPointer. this)))
     (size-t-pointer [this]
-      (SizeTPointer. this))
+      (divide-capacity this (SizeTPointer. this)))
     (pointer-pointer [this]
-      (PointerPointer. this))
+      (divide-capacity this (PointerPointer. this)))
     (char-pointer [this]
-      (CharPointer. this))
+      (divide-capacity this (CharPointer. this)))
     (short-pointer [this]
-      (ShortPointer. this))
+      (divide-capacity this (ShortPointer. this)))
     (int-pointer [this]
-      (IntPointer. this))
+      (divide-capacity this (IntPointer. this)))
     (long-pointer [this]
-      (LongPointer. this))
+      (divide-capacity this (LongPointer. this)))
     (float-pointer [this]
-      (FloatPointer. this))
+      (divide-capacity this (FloatPointer. this)))
     (double-pointer [this]
-      (DoublePointer. this))))
+      (divide-capacity this (DoublePointer. this)))))
 
 (extend-type nil
   PointerCreator
@@ -477,7 +501,7 @@
   (size-t-pointer [this]
     (SizeTPointer. (long-array this)))
   (pointer-pointer [this]
-    (pointer-pointer (into-array (class (first this)) this)))
+    (pointer-pointer (into-array Pointer (map pointer this))))
   (char-pointer [this]
     (CharPointer. (char-array (map char this))))
   (short-pointer [this]
@@ -535,7 +559,6 @@
       (create-new* ~pt ~buffer-class this#))))
 
 (extend-buffer CharBuffer CharPointer char-pointer)
-(extend-buffer ByteBuffer BytePointer byte-pointer)
 (extend-buffer ShortBuffer ShortPointer short-pointer)
 (extend-buffer IntBuffer IntPointer int-pointer)
 (extend-buffer LongBuffer LongPointer long-pointer)
@@ -573,8 +596,6 @@
 (extend-array (Class/forName "[S") shorts ShortPointer short-pointer)
 (extend-array (Class/forName "[I") ints IntPointer int-pointer)
 (extend-array (Class/forName "[J") longs LongPointer long-pointer)
-
-
 
 (extend-type (Class/forName "[J")
   TypedPointerCreator
@@ -663,6 +684,12 @@
     (.putString ^PointerPointer pp ^"[Ljava.lang.String;" this)))
 
 (extend-type String
+  PointerCreator
+  (pointer*
+    ([s]
+     (BytePointer. s))
+    ([s i]
+     (.position (BytePointer. s) (long i))))
   TypedPointerCreator
   (byte-pointer
     ([s]
