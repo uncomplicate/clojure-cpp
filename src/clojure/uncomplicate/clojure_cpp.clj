@@ -9,15 +9,17 @@
 (ns uncomplicate.clojure-cpp
   (:require [uncomplicate.commons
              [core :refer [Releaseable release let-release Info info Viewable view Wrapper Wrappable
-                           Bytes Entries bytesize* sizeof*]]
-             [utils :refer [dragan-says-ex]]])
+                           Bytes Entries bytesize sizeof*]]
+             [utils :refer [dragan-says-ex]]]
+            [uncomplicate.fluokitten.core :refer [fmap!]])
   (:import [java.nio Buffer ByteBuffer CharBuffer ShortBuffer IntBuffer LongBuffer FloatBuffer
             DoubleBuffer]
            java.nio.charset.Charset
-           clojure.lang.Seqable
+           [clojure.lang Seqable Keyword]
            [org.bytedeco.javacpp Pointer BytePointer CharPointer BoolPointer ShortPointer
             IntPointer LongPointer FloatPointer DoublePointer CLongPointer FunctionPointer
-            PointerPointer SizeTPointer PointerScope]))
+            PointerPointer SizeTPointer PointerScope]
+           [uncomplicate.clojure_cpp.pointer StringPointer KeywordPointer]))
 
 ;; ================= System =================================
 
@@ -137,6 +139,8 @@
 (defprotocol TypedPointerCreator
   (^PointerPointer pointer-pointer [this] [this charset])
   (^BytePointer byte-pointer [this] [this charset])
+  (^KeywordPointer keyword-pointer [this] [this charset])
+  (^StringPointer string-pointer [this] [this charset])
   (^BoolPointer bool-pointer [this])
   (^ClongPointer clong-pointer [this])
   (^SizeTPointer size-t-pointer [this])
@@ -388,7 +392,11 @@
        (.getPointer this ^long i)))
     TypedPointerCreator
     (byte-pointer [this]
-      (.capacity (BytePointer. this) (bytesize* this)))
+      (.capacity (BytePointer. this) (bytesize this)))
+    (keyword-pointer [this]
+      (.capacity (KeywordPointer. this) (bytesize this)))
+    (string-pointer [this]
+      (.capacity (StringPointer. this) (bytesize this)))
     (clong-pointer [this]
       (divide-capacity this (CLongPointer. this)))
     (size-t-pointer [this]
@@ -418,6 +426,8 @@
   TypedPointerCreator
   (byte-pointer [_]
     (BytePointer.))
+  (string-pointer [_]
+    (StringPointer.))
   (clong-pointer [_]
     (CLongPointer.))
   (size-t-pointer [_]
@@ -450,6 +460,10 @@
      TypedPointerCreator
      (byte-pointer [this#]
        (create-new* BytePointer this#))
+     (keywrod-pointer [this#]
+       (create-new* KeywordPointer this#))
+     (string-pointer [this#]
+       (create-new* StringPointer this#))
      (clong-pointer [this#]
        (create-new* CLongPointer this#))
      (size-t-pointer [this#]
@@ -496,6 +510,10 @@
   TypedPointerCreator
   (byte-pointer [this]
     (BytePointer. (byte-array this)))
+  (keyword-pointer [this]
+    (KeywordPointer. (byte-array this)))
+  (string-pointer [this]
+    (StringPointer. (byte-array this)))
   (clong-pointer [this]
     (CLongPointer. (long-array this)))
   (size-t-pointer [this]
@@ -533,6 +551,8 @@
   TypedPointerCreator
   (byte-pointer [this]
     (BytePointer. this))
+  (string-pointer [this]
+    (StringPointer. this))
   (char-pointer [this]
     (CharPointer. (.asCharBuffer this)))
   (short-pointer [this]
@@ -683,29 +703,40 @@
   (put-pointer-pointer* [this pp]
     (.putString ^PointerPointer pp ^"[Ljava.lang.String;" this)))
 
-(extend-type String
+(defn ^:private keyword-pointer*
+  (^KeywordPointer [k]
+   (KeywordPointer. (subs (str k) 1)))
+  (^KeywordPointer [k charset]
+   (if (string? charset)
+     (KeywordPointer. (subs (str k) 1) ^String charset)
+     (KeywordPointer. (subs (str k) 1) ^Charset charset))))
+
+(defn get-keyword
+  (^Keyword [^BytePointer p]
+   (apply keyword (clojure.string/split (.getString p) #"/")))
+  (^Keyword [^BytePointer p charset]
+   (apply keyword (clojure.string/split (if (string? charset)
+                                          (.getString p ^String charset)
+                                          (.getString p ^Charset charset)) #"/"))))
+
+(extend-type Keyword
   PointerCreator
   (pointer*
-    ([s]
-     (BytePointer. s))
-    ([s i]
-     (.position (BytePointer. s) (long i))))
+    ([k]
+     (keyword-pointer* k))
+    ([k i]
+     (.position (keyword-pointer* k) (long i))))
   TypedPointerCreator
-  (byte-pointer
-    ([s]
-     (BytePointer. s))
-    ([s charset]
-     (if (string? charset)
-       (BytePointer. s ^String charset)
-       (BytePointer. s ^Charset charset))))
+  (keyword-pointer
+    ([k]
+     (keyword-pointer* k))
+    ([k charset]
+     (keyword-pointer* k charset)))
   PutPointer
   (put-pointer-pointer* [charset-name src pp]
-    (.putString ^PointerPointer pp ^"[Ljava.lang.String;" src ^String charset-name)))
-
-(extend-type Charset
-  PutPointer
-  (put-pointer-pointer* [charset src pp]
-    (.putString ^PointerPointer pp ^"[Ljava.lang.String;" src ^String charset)))
+    (.putString ^PointerPointer pp
+                ^"[Ljava.lang.String;" (fmap! #(keyword-pointer* %) src)
+                ^String charset-name)))
 
 (defn get-string
   (^String [^BytePointer p]
@@ -714,6 +745,30 @@
    (if (string? charset)
      (.getString p ^String charset)
      (.getString p ^Charset charset))))
+
+(extend-type String
+  PointerCreator
+  (pointer*
+    ([s]
+     (StringPointer. s))
+    ([s i]
+     (.position (StringPointer. s) (long i))))
+  TypedPointerCreator
+  (string-pointer
+    ([s]
+     (StringPointer. s))
+    ([s charset]
+     (if (string? charset)
+       (StringPointer. s ^String charset)
+       (StringPointer. s ^Charset charset))))
+  PutPointer
+  (put-pointer-pointer* [charset-name src pp]
+    (.putString ^PointerPointer pp ^"[Ljava.lang.String;" src ^String charset-name)))
+
+(extend-type Charset
+  PutPointer
+  (put-pointer-pointer* [charset src pp]
+    (.putString ^PointerPointer pp ^"[Ljava.lang.String;" src ^String charset)))
 
 (defn get-pointer-value
   ([^BytePointer p]
@@ -955,3 +1010,13 @@
     ([this src arg]
      (put-pointer-pointer* arg src this)
      this)))
+
+(extend-type StringPointer
+  Wrapper
+  (extract [this]
+    (get-string this)))
+
+(extend-type KeywordPointer
+  Wrapper
+  (extract [this]
+    (get-keyword this)))

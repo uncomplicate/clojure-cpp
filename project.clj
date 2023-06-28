@@ -14,6 +14,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.11.1"]
                  [uncomplicate/commons "0.14.0-SNAPSHOT"]
+                 [uncomplicate/fluokitten "0.9.1"]
                  [org.bytedeco/javacpp-platform "1.5.9"]]
 
   :profiles {:dev {:plugins [[lein-midje "3.2.1"]
@@ -22,9 +23,12 @@
                                  *assert* false
                                  *unchecked-math* :warn-on-boxed
                                  *print-length* 128}
-                   :dependencies [[midje "1.10.9"]]}}
+                   :dependencies [[midje "1.10.9"]]
+                   :codox {:metadata {:doc/format :markdown}
+                           :src-dir-uri "http://github.com/uncomplicate/clojure-cpp/blob/master/"
+                           :src-linenum-anchor-prefix "L"
+                           :output-path "docs/codox"}}}
 
-  :codox {:metadata {:doc/format :markdown}
-          :src-dir-uri "http://github.com/uncomplicate/clojure-cpp/blob/master/"
-          :src-linenum-anchor-prefix "L"
-          :output-path "docs/codox"})
+  :source-paths ["src/clojure" "src/device"]
+  :java-source-paths ["src/java"]
+  :test-paths ["test"])
