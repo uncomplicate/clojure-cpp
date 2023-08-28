@@ -8,8 +8,8 @@
 
 (ns uncomplicate.clojure-cpp
   (:require [uncomplicate.commons
-             [core :refer [Releaseable release let-release Info info Viewable view Wrapper Wrappable
-                           Bytes Entries bytesize sizeof*]]
+             [core :refer [Releaseable release let-release Info info Wrapper Wrappable
+                           Bytes Entries bytesize sizeof]]
              [utils :refer [dragan-says-ex]]]
             [uncomplicate.fluokitten.core :refer [fmap!]])
   (:import [java.nio Buffer ByteBuffer CharBuffer ShortBuffer IntBuffer LongBuffer FloatBuffer
@@ -75,10 +75,6 @@
 (defn memset! [^Pointer dst ch ^long size]
   (Pointer/memset dst (int ch) size))
 
-(defn fill! [^Pointer p b]
-  (.fill p b)
-  p)
-
 (defn zero! [^Pointer p]
   (.zero p)
   p)
@@ -117,6 +113,7 @@
     x
     (dragan-says-ex "NULL pointer is not allowed in this part of code. Please do not use non-initialized pointers here."
                     {:x x})))
+
 (defn get-pointer
   (^Pointer [^Pointer p]
    (.getPointer p))
@@ -158,130 +155,143 @@
    (pointer* x i)))
 
 (defn ptr*
-  (^Pointer [x]
+  (^Pointer [^Pointer x]
    x)
   (^Pointer [x ^long i]
    (get-pointer x i)))
 
 (defn ptr
-  (^Pointer [x]
+  (^Pointer [^Pointer x]
    (safe x))
-  (^Pointer [x ^long i]
+  (^Pointer [^Pointer x ^long i]
    (get-pointer (safe x) i)))
 
 (defn float-ptr*
-  (^FloatPointer [x]
+  (^FloatPointer [^FloatPointer x]
    x)
-  (^FloatPointer [x ^long i]
+  (^FloatPointer [^FloatPointer x ^long i]
    (get-pointer x i)))
 
 (defn float-ptr
-  (^FloatPointer [x]
+  (^FloatPointer [^FloatPointer x]
    (safe x))
-  (^FloatPointer [x ^long i]
+  (^FloatPointer [^FloatPointer x ^long i]
    (get-pointer (safe x) FloatPointer i)))
 
 (defn double-ptr*
-  (^DoublePointer [x]
+  (^DoublePointer [^DoublePointer x]
    x)
-  (^DoublePointer [x ^long i]
+  (^DoublePointer [^DoublePointer x ^long i]
    (get-pointer x i)))
 
 (defn double-ptr
-  (^DoublePointer [x]
+  (^DoublePointer [^DoublePointer x]
    (safe x))
-  (^DoublePointer [x ^long i]
+  (^DoublePointer [^DoublePointer x ^long i]
    (get-pointer (safe x) DoublePointer i)))
 
 (defn long-ptr*
-  (^LongPointer [x]
+  (^LongPointer [^LongPointer x]
    x)
-  (^LongPointer [x ^long i]
+  (^LongPointer [^LongPointer x ^long i]
    (get-pointer x i)))
 
 (defn long-ptr
-  (^LongPointer [x]
+  (^LongPointer [^LongPointer x]
    (safe x))
-  (^LongPointer [x ^long i]
+  (^LongPointer [^LongPointer x ^long i]
    (get-pointer (safe x) LongPointer i)))
 
 (defn int-ptr*
-  (^IntPointer [x]
+  (^IntPointer [^IntPointer x]
    x)
-  (^IntPointer [x ^long i]
+  (^IntPointer [^IntPointer x ^long i]
    (get-pointer x i)))
 
 (defn int-ptr
-  (^IntPointer [x]
+  (^IntPointer [^IntPointer x]
    (safe x))
-  (^IntPointer [x ^long i]
+  (^IntPointer [^IntPointer x ^long i]
    (get-pointer (safe x) IntPointer i)))
 
 (defn short-ptr*
-  (^ShortPointer [x]
+  (^ShortPointer [^ShortPointer x]
    x)
-  (^ShortPointer [x ^long i]
+  (^ShortPointer [^ShortPointer x ^long i]
    (get-pointer x i)))
 
 (defn short-ptr
-  (^ShortPointer [x]
+  (^ShortPointer [^ShortPointer x]
    (safe x))
-  (^ShortPointer [x ^long i]
+  (^ShortPointer [^ShortPointer x ^long i]
    (get-pointer (safe x) ShortPointer i)))
 
 (defn byte-ptr*
-  (^BytePointer [x]
+  (^BytePointer [^BytePointer x]
    x)
-  (^BytePointer [x ^long i]
+  (^BytePointer [^BytePointer x ^long i]
    (get-pointer x i)))
 
 (defn byte-ptr
-  (^BytePointer [x]
+  (^BytePointer [^BytePointer x]
    (safe x))
-  (^BytePointer [x ^long i]
+  (^BytePointer [^BytePointer x ^long i]
    (get-pointer (safe x) BytePointer i)))
 
 (defn clong-ptr*
-  (^CLongPointer [x]
+  (^CLongPointer [^CLongPointer x]
    x)
-  (^CLongPointer [x ^long i]
+  (^CLongPointer [^CLongPointer x ^long i]
    (get-pointer x i)))
 
 (defn clong-ptr
-  (^CLongPointer [x]
+  (^CLongPointer [^CLongPointer x]
    (safe x))
-  (^CLongPointer [x ^long i]
+  (^CLongPointer [^CLongPointer x ^long i]
    (get-pointer (safe x) CLongPointer i)))
 
 (defn size-t-ptr*
-  (^SizeTPointer [x]
+  (^SizeTPointer [^SizeTPointer x]
    x)
-  (^SizeTPointer [x ^long i]
+  (^SizeTPointer [^SizeTPointer x ^long i]
    (get-pointer x i)))
 
 (defn size-t-ptr
-  (^SizeTPointer [x]
+  (^SizeTPointer [^SizeTPointer x]
    (safe x))
-  (^SizeTPointer [x ^long i]
+  (^SizeTPointer [^SizeTPointer x ^long i]
    (get-pointer (safe x) SizeTPointer i)))
 
 (defn bool-ptr*
-  (^BoolPointer [x]
+  (^BoolPointer [^BoolPointer x]
    x)
-  (^BoolPointer [x ^long i]
+  (^BoolPointer [^BoolPointer x ^long i]
    (get-pointer x i)))
 
 (defn bool-ptr
-  (^BoolPointer [x]
+  (^BoolPointer [^BoolPointer x]
    (safe x))
-  (^BoolPointer [x ^long i]
+  (^BoolPointer [^BoolPointer x ^long i]
    (get-pointer (safe x) BoolPointer i)))
+
+(defn bool-ptr*
+  (^CharPointer [^CharPointer x]
+   x)
+  (^CharPointer [^CharPointer x ^long i]
+   (get-pointer x i)))
+
+(defn bool-ptr
+  (^CharPointer [^CharPointer x]
+   (safe x))
+  (^CharPointer [^CharPointer x ^long i]
+   (get-pointer (safe x) CharPointer i)))
 
 (defprotocol Accessor
   (get! [pointer dst!] [pointer dst! offset length])
   (put! [pointer! src] [pointer! src offset length])
   (get-entry [pointer] [pointer i])
-  (put-entry! [pointer value] [pointer i value]))
+  (put-entry! [pointer value] [pointer i value])
+  (fill! [pointer value]))
 
 (defprotocol PutEntry
   (put-entry* [value pointer] [value i pointer]))
@@ -905,6 +915,10 @@
        ([this# i# value#]
         (.put this# i# (~entry-type value#))
         this#))
+     (fill! [this# value#]
+       (dotimes [i# (element-count this#)]
+         (.put this# i# (~entry-type value#)))
+       this#)
      (get!
        ([p# arr#]
         (access* get ~pt p# ~array-type arr#)
@@ -952,6 +966,9 @@
        ([this i value]
         (put-entry* value i this)
         this))
+     (fill! [this value]
+       (.fill this value)
+       this)
      (get!
        ([p arr]
         (.get p (bytes arr))
@@ -975,7 +992,7 @@
      PutEntry
      (put-entry*
        ([this# p#]
-        (~put-method p# this#))
+        (~put-method p# 0 this#))
        ([this# i# p#]
         (~put-method p# i# this#)))))
 
@@ -1003,6 +1020,10 @@
     ([this i value]
      (.put this i ^Pointer value)
      this))
+  (fill! [this value]
+    (dotimes [i (element-count this)]
+     (.put this i ^Pointer value))
+   this)
   (put!
     ([p obj]
      (put-pointer-pointer* obj p)

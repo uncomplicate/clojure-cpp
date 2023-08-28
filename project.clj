@@ -15,7 +15,7 @@
   :dependencies [[org.clojure/clojure "1.11.1"]
                  [uncomplicate/commons "0.14.0-SNAPSHOT"]
                  [uncomplicate/fluokitten "0.9.1"]
-                 [org.bytedeco/javacpp-platform "1.5.9"]]
+                 [org.bytedeco/javacpp-platform "1.5.10-SNAPSHOT"]]
 
   :profiles {:dev {:plugins [[lein-midje "3.2.1"]
                              [lein-codox "0.10.7"]]
@@ -28,6 +28,8 @@
                            :src-dir-uri "http://github.com/uncomplicate/clojure-cpp/blob/master/"
                            :src-linenum-anchor-prefix "L"
                            :output-path "docs/codox"}}}
+
+  :repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]
 
   :source-paths ["src/clojure" "src/device"]
   :java-source-paths ["src/java"]

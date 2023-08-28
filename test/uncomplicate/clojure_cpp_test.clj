@@ -1,6 +1,6 @@
 (ns uncomplicate.clojure-cpp-test
   (:require [midje.sweet :refer [facts throws => roughly]]
-            [uncomplicate.commons.core :refer [info release]]
+            [uncomplicate.commons.core :refer [info release with-release]]
             [uncomplicate.clojure-cpp :refer :all]))
 
 (facts
@@ -112,3 +112,11 @@
    (get-entry (int-pointer (get-entry pp 0)) 1) => 20
    (release pp) => true
    (null? pp) => true))
+
+(facts
+ "Test bulk put-entry!"
+ (with-release [p11 (byte-pointer 11)
+                p3 (int-pointer 3)]
+   (fill! p11 2) => p11
+   (pointer-seq (fill! p3 Integer/MAX_VALUE)) => (repeat 3 Integer/MAX_VALUE)
+   (pointer-seq (put-entry! p11 (int 111))) => [111 0 0 0 2 2 2 2 2 2 2]))
