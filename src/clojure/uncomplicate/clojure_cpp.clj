@@ -185,6 +185,9 @@
   (^FloatPointer float-pointer [this])
   (^DoublePointer double-pointer [this]))
 
+(defprotocol PointerVec
+  (pointer-vec [this]))
+
 (defn pointer
   (^Pointer [x]
    (pointer* x))
@@ -935,7 +938,14 @@
        ([p# obj# offset# length#]
         (if (sequential? obj#)
           (.put p# (~array-type (~convert-fn (take length# (drop offset# obj#)))))
-          (.put p# obj# offset# length#))))))
+          (.put p# obj# offset# length#))))
+     PointerVec
+     (pointer-vec [this#]
+       (let [n# (element-count this#)]
+         (loop [res# (transient []) i# 0]
+           (if (< i# n#)
+             (recur (conj! res# (.get this# i#)) (inc i#))
+             (persistent! res#)))))))
 
 (extend-pointer CLongPointer long longs long-array)
 (extend-pointer SizeTPointer long longs long-array)
@@ -985,7 +995,14 @@
        ([p obj offset length]
         (if (sequential? obj)
           (.put p (byte-array (take length (drop offset obj))))
-          (.put p obj offset length)))))
+          (.put p obj offset length))))
+     PointerVec
+     (pointer-vec [this#]
+       (let [n# (element-count this#)]
+         (loop [res# (transient []) i# 0]
+           (if (< i# n#)
+             (recur (conj! res# (.get this# i#)) (inc i#))
+             (persistent! res#))))))
 
 (defmacro extend-entry [number-type put-method]
   `(extend-type ~number-type
