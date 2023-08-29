@@ -23,6 +23,43 @@
 
 ;; ================= System =================================
 
+(def ^:const pointer-types
+  {DoublePointer :double
+   FloatPointer :float
+   LongPointer :long
+   IntPointer :int
+   ShortPointer :short
+   BytePointer :byte
+   CharPointer :char
+   CLongPointer :clong
+   SizeTPointer :size-t
+   BoolPointer :bool
+   FunctionPointer :function
+   PointerPointer :pointer
+   Pointer :default})
+
+(def ^:const type-pointers
+  {:double DoublePointer
+   :float FloatPointer
+   :long LongPointer
+   :int IntPointer
+   :short ShortPointer
+   :byte BytePointer
+   :char CharPointer
+   :clong CLongPointer
+   :size-t SizeTPointer
+   :bool BoolPointer
+   :function FunctionPointer
+   :pointer PointerPointer
+   :default Pointer
+   Double/TYPE DoublePointer
+   Float/TYPE FloatPointer
+   Long/TYPE LongPointer
+   Integer/TYPE IntPointer
+   Short/TYPE ShortPointer
+   Byte/TYPE BytePointer
+   Character/TYPE CharPointer})
+
 (defn physical-bytes
   (^long []
    (Pointer/physicalBytes))
@@ -120,7 +157,7 @@
   (^Pointer [^Pointer p ^long i]
    (.getPointer p i))
   (^Pointer [^Pointer p type ^long i]
-   (.getPointer p type i)))
+   (.getPointer p (get type-pointers type type) i)))
 
 ;; ================= Buffer =================================
 
@@ -157,134 +194,134 @@
 (defn ptr*
   (^Pointer [^Pointer x]
    x)
-  (^Pointer [x ^long i]
-   (get-pointer x i)))
+  (^Pointer [^Pointer x ^long i]
+   (.getPointer x i)))
 
 (defn ptr
   (^Pointer [^Pointer x]
    (safe x))
   (^Pointer [^Pointer x ^long i]
-   (get-pointer (safe x) i)))
+   (.getPointer (safe x) i)))
 
 (defn float-ptr*
   (^FloatPointer [^FloatPointer x]
    x)
   (^FloatPointer [^FloatPointer x ^long i]
-   (get-pointer x i)))
+   (.getPointer x i)))
 
 (defn float-ptr
   (^FloatPointer [^FloatPointer x]
    (safe x))
   (^FloatPointer [^FloatPointer x ^long i]
-   (get-pointer (safe x) FloatPointer i)))
+   (.getPointer (safe x) FloatPointer i)))
 
 (defn double-ptr*
   (^DoublePointer [^DoublePointer x]
    x)
   (^DoublePointer [^DoublePointer x ^long i]
-   (get-pointer x i)))
+   (.getPointer x i)))
 
 (defn double-ptr
   (^DoublePointer [^DoublePointer x]
    (safe x))
   (^DoublePointer [^DoublePointer x ^long i]
-   (get-pointer (safe x) DoublePointer i)))
+   (.getPointer (safe x) DoublePointer i)))
 
 (defn long-ptr*
   (^LongPointer [^LongPointer x]
    x)
   (^LongPointer [^LongPointer x ^long i]
-   (get-pointer x i)))
+   (.getPointer x i)))
 
 (defn long-ptr
   (^LongPointer [^LongPointer x]
    (safe x))
   (^LongPointer [^LongPointer x ^long i]
-   (get-pointer (safe x) LongPointer i)))
+   (.getPointer (safe x) LongPointer i)))
 
 (defn int-ptr*
   (^IntPointer [^IntPointer x]
    x)
   (^IntPointer [^IntPointer x ^long i]
-   (get-pointer x i)))
+   (.getPointer x i)))
 
 (defn int-ptr
   (^IntPointer [^IntPointer x]
    (safe x))
   (^IntPointer [^IntPointer x ^long i]
-   (get-pointer (safe x) IntPointer i)))
+   (.getPointer (safe x) IntPointer i)))
 
 (defn short-ptr*
   (^ShortPointer [^ShortPointer x]
    x)
   (^ShortPointer [^ShortPointer x ^long i]
-   (get-pointer x i)))
+   (.getPointer x i)))
 
 (defn short-ptr
   (^ShortPointer [^ShortPointer x]
    (safe x))
   (^ShortPointer [^ShortPointer x ^long i]
-   (get-pointer (safe x) ShortPointer i)))
+   (.getPointer (safe x) ShortPointer i)))
 
 (defn byte-ptr*
   (^BytePointer [^BytePointer x]
    x)
   (^BytePointer [^BytePointer x ^long i]
-   (get-pointer x i)))
+   (.getPointer x i)))
 
 (defn byte-ptr
   (^BytePointer [^BytePointer x]
    (safe x))
   (^BytePointer [^BytePointer x ^long i]
-   (get-pointer (safe x) BytePointer i)))
+   (.getPointer (safe x) BytePointer i)))
 
 (defn clong-ptr*
   (^CLongPointer [^CLongPointer x]
    x)
   (^CLongPointer [^CLongPointer x ^long i]
-   (get-pointer x i)))
+   (.getPointer x i)))
 
 (defn clong-ptr
   (^CLongPointer [^CLongPointer x]
    (safe x))
   (^CLongPointer [^CLongPointer x ^long i]
-   (get-pointer (safe x) CLongPointer i)))
+   (.getPointer (safe x) CLongPointer i)))
 
 (defn size-t-ptr*
   (^SizeTPointer [^SizeTPointer x]
    x)
   (^SizeTPointer [^SizeTPointer x ^long i]
-   (get-pointer x i)))
+   (.getPointer x i)))
 
 (defn size-t-ptr
   (^SizeTPointer [^SizeTPointer x]
    (safe x))
   (^SizeTPointer [^SizeTPointer x ^long i]
-   (get-pointer (safe x) SizeTPointer i)))
+   (.getPointer (safe x) SizeTPointer i)))
 
 (defn bool-ptr*
   (^BoolPointer [^BoolPointer x]
    x)
   (^BoolPointer [^BoolPointer x ^long i]
-   (get-pointer x i)))
+   (.getPointer x i)))
 
 (defn bool-ptr
   (^BoolPointer [^BoolPointer x]
    (safe x))
   (^BoolPointer [^BoolPointer x ^long i]
-   (get-pointer (safe x) BoolPointer i)))
+   (.getPointer (safe x) BoolPointer i)))
 
 (defn bool-ptr*
   (^CharPointer [^CharPointer x]
    x)
   (^CharPointer [^CharPointer x ^long i]
-   (get-pointer x i)))
+   (.getPointer x i)))
 
 (defn bool-ptr
   (^CharPointer [^CharPointer x]
    (safe x))
   (^CharPointer [^CharPointer x ^long i]
-   (get-pointer (safe x) CharPointer i)))
+   (.getPointer (safe x) CharPointer i)))
 
 (defprotocol Accessor
   (get! [pointer dst!] [pointer dst! offset length])
@@ -298,43 +335,6 @@
 
 (defprotocol PutPointer
   (put-pointer-pointer* [src dst] [arg src dst]))
-
-(def ^:const pointer-types
-  {DoublePointer :double
-   FloatPointer :float
-   LongPointer :long
-   IntPointer :int
-   ShortPointer :short
-   BytePointer :byte
-   CharPointer :char
-   CLongPointer :clong
-   SizeTPointer :size-t
-   BoolPointer :bool
-   FunctionPointer :function
-   PointerPointer :pointer
-   Pointer :default})
-
-(def ^:const type-pointers
-  {:double DoublePointer
-   :float FloatPointer
-   :long LongPointer
-   :int IntPointer
-   :short ShortPointer
-   :byte BytePointer
-   :char CharPointer
-   :clong CLongPointer
-   :size-t SizeTPointer
-   :bool BoolPointer
-   :function FunctionPointer
-   :pointer PointerPointer
-   :default Pointer
-   Double/TYPE DoublePointer
-   Float/TYPE FloatPointer
-   Long/TYPE LongPointer
-   Integer/TYPE IntPointer
-   Short/TYPE ShortPointer
-   Byte/TYPE BytePointer
-   Character/TYPE CharPointer})
 
 (defn type-pointer [t]
   (case t
