@@ -9,7 +9,7 @@
 (ns uncomplicate.clojure-cpp
   (:require [uncomplicate.commons
              [core :refer [Releaseable release let-release Info info Wrapper Wrappable
-                           Bytes Entries bytesize sizeof]]
+                           Bytes Entries bytesize sizeof size]]
              [utils :refer [dragan-says-ex]]]
             [uncomplicate.fluokitten.core :refer [fmap!]])
   (:import [java.nio Buffer ByteBuffer CharBuffer ShortBuffer IntBuffer LongBuffer FloatBuffer
@@ -58,7 +58,8 @@
    Integer/TYPE IntPointer
    Short/TYPE ShortPointer
    Byte/TYPE BytePointer
-   Character/TYPE CharPointer})
+   Character/TYPE CharPointer
+   Boolean/TYPE BoolPointer})
 
 (defn physical-bytes
   (^long []
@@ -141,9 +142,6 @@
 
 (defn position! [^Pointer p ^long n]
   (.position p n))
-
-(defn element-count ^long [^Pointer p]
-  (max 0 (- (.limit p) (.position p))))
 
 (defn safe ^Pointer [^Pointer x]
   (if-not (null? x)
@@ -354,9 +352,6 @@
     :bool bool-pointer
     nil))
 
-(defn ^:private divide-capacity [^Pointer src ^Pointer dst]
-  (.capacity dst (quot (* (.sizeof src) (element-count src)) (.sizeof dst))))
-
 (let [get-deallocator (doto (.getDeclaredMethod Pointer "deallocator" (make-array Class 0))
                         (.setAccessible true))
       empty-array (into-array [])]
@@ -391,12 +386,12 @@
       this)
     Bytes
     (bytesize* [this]
-      (* (.sizeof this) (element-count this)))
+      (max 0 (* (.sizeof this) (- (.limit this) (.position this)))))
     Entries
     (sizeof* [this]
       (.sizeof this))
     (size* [this]
-      (element-count this))
+      (max 0 (- (.limit this) (.position this))))
     PointerCreator
     (pointer*
       ([this]
@@ -405,29 +400,29 @@
        (.getPointer this ^long i)))
     TypedPointerCreator
     (byte-pointer [this]
-      (.capacity (BytePointer. this) (bytesize this)))
+      (.getPointer this BytePointer 0))
     (keyword-pointer [this]
-      (.capacity (KeywordPointer. this) (bytesize this)))
+      (.getPointer this KeywordPointer 0))
     (string-pointer [this]
-      (.capacity (StringPointer. this) (bytesize this)))
+      (.getPointer this StringPointer 0))
     (clong-pointer [this]
-      (divide-capacity this (CLongPointer. this)))
+      (.getPointer this CLongPointer 0))
     (size-t-pointer [this]
-      (divide-capacity this (SizeTPointer. this)))
+      (.getPointer this SizeTPointer 0))
     (pointer-pointer [this]
-      (divide-capacity this (PointerPointer. this)))
+      (.getPointer this PointerPointer 0))
     (char-pointer [this]
-      (divide-capacity this (CharPointer. this)))
+      (.getPointer this CharPointer 0))
     (short-pointer [this]
-      (divide-capacity this (ShortPointer. this)))
+      (.getPointer this ShortPointer 0))
     (int-pointer [this]
-      (divide-capacity this (IntPointer. this)))
+      (.getPointer this IntPointer 0))
     (long-pointer [this]
-      (divide-capacity this (LongPointer. this)))
+      (.getPointer this LongPointer 0))
     (float-pointer [this]
-      (divide-capacity this (FloatPointer. this)))
+      (.getPointer this FloatPointer 0))
     (double-pointer [this]
-      (divide-capacity this (DoublePointer. this)))))
+      (.getPointer this DoublePointer 0))))
 
 (extend-type nil
   PointerCreator
@@ -895,7 +890,7 @@
                '())))]
     (if (null? p)
       nil
-      (pointer-seq* p 0 (element-count p)))))
+      (pointer-seq* p 0 (size p)))))
 
 (defmacro extend-pointer [pt entry-type array-type convert-fn]
   `(extend-type ~pt
@@ -919,7 +914,7 @@
         (.put this# i# (~entry-type value#))
         this#))
      (fill! [this# value#]
-       (dotimes [i# (element-count this#)]
+       (dotimes [i# (size this#)]
          (.put this# i# (~entry-type value#)))
        this#)
      (get!
@@ -941,7 +936,7 @@
           (.put p# obj# offset# length#))))
      PointerVec
      (pointer-vec [this#]
-       (let [n# (element-count this#)]
+       (let [n# (size this#)]
          (loop [res# (transient []) i# 0]
            (if (< i# n#)
              (recur (conj! res# (.get this# i#)) (inc i#))
@@ -998,7 +993,7 @@
           (.put p obj offset length))))
      PointerVec
      (pointer-vec [this#]
-       (let [n# (element-count this#)]
+       (let [n# (size this#)]
          (loop [res# (transient []) i# 0]
            (if (< i# n#)
              (recur (conj! res# (.get this# i#)) (inc i#))
@@ -1038,7 +1033,7 @@
      (.put this i ^Pointer value)
      this))
   (fill! [this value]
-    (dotimes [i (element-count this)]
+    (dotimes [i (size this)]
      (.put this i ^Pointer value))
    this)
   (put!
@@ -1047,7 +1042,14 @@
      p)
     ([this src arg]
      (put-pointer-pointer* arg src this)
-     this)))
+     this))
+  PointerVec
+  (pointer-vec [this#]
+    (let [n# (size this#)]
+      (loop [res# (transient []) i# 0]
+        (if (< i# n#)
+          (recur (conj! res# (.get this# i#)) (inc i#))
+          (persistent! res#))))))
 
 (extend-type StringPointer
   Wrapper

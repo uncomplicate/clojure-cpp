@@ -1,6 +1,6 @@
 (ns uncomplicate.clojure-cpp-test
   (:require [midje.sweet :refer [facts throws => roughly]]
-            [uncomplicate.commons.core :refer [info release with-release]]
+            [uncomplicate.commons.core :refer [info release with-release size bytesize sizeof]]
             [uncomplicate.clojure-cpp :refer :all]))
 
 (facts
@@ -43,6 +43,18 @@
    (free! p2) => p2
    (null? p2) => true
    (release p2) => true))
+
+(facts
+ "Test memcpy."
+ (with-release [p (long-pointer 3)
+                p1 (long-pointer 3)]
+   (nil? p) => false
+   (fill! p 100) => p
+   (pointer-seq p1) =not=> (pointer-seq p)
+   (memcpy! p p1 16) => p1
+   (pointer-seq p1) =not=> (pointer-seq p)
+   (memcpy! p p1 24) => p1
+   (pointer-seq p1) => (pointer-seq p)))
 
 (defn test-array-pointer [constructor cast array]
   (facts
@@ -121,3 +133,39 @@
    (fill! p11 2) => p11
    (pointer-seq (fill! p3 Integer/MAX_VALUE)) => (repeat 3 Integer/MAX_VALUE)
    (pointer-seq (put-entry! p11 (int 111))) => [111 0 0 0 2 2 2 2 2 2 2]))
+
+(facts
+ "Test Pointer coercion properties."
+ (with-release [bp (byte-pointer 64)
+                lp (long-pointer bp)
+                bp1 (byte-pointer lp)]
+   (size bp) => 64
+   (bytesize bp) => 64
+   (sizeof bp) => 1
+   (size lp) => 8
+   (bytesize lp) => 64
+   (sizeof lp) => 8
+   (dotimes [i 8]
+     (put-long! bp i (inc i))
+     (get-long bp i) => (inc i)
+     (get-entry lp i) => (inc i))
+   (position lp) => 0
+   (capacity lp) => 8
+   (limit lp) => 8
+   (position! lp 1) => lp
+   (position lp) => 1
+   (capacity! lp 6) => lp
+   (capacity lp) => 6
+   (limit! lp 5) => lp
+   (limit lp) => 5
+   (size lp) => 4
+   (bytesize lp) => 32
+   (position bp1) => 0
+   (let [bp2 (byte-pointer lp)]
+     (position bp2) => (* (sizeof lp) (position lp))
+     (capacity bp2) => (* (sizeof lp) (capacity lp))
+     (limit bp2) => (* (sizeof lp) (limit lp)))
+   (let [bp3 (get-pointer lp :byte 0)]
+     (position bp3) => (* (sizeof lp) (position lp))
+     (capacity bp3) => (* (sizeof lp) (capacity lp))
+     (limit bp3) => (* (sizeof lp) (limit lp)))))
