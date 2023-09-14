@@ -23,7 +23,8 @@
  "Test memory (de)allocation."
  (let [p (pointer nil)
        p1 (malloc! 16)
-       p2 (calloc! 2 8)]
+       p2 (calloc! 2 8)
+       p3 (malloc! 128000)]
    (null? p) => true
    (nil? p) => false
    (nil? (malloc! -1)) => true
@@ -35,6 +36,12 @@
    (pointer-seq p) => nil
    (pointer-seq p1) => '()
    (pointer-seq p2) => '()
+   (size p1) => 0
+   (bytesize p1) => 0
+   (sizeof p1) => 1
+   (size p2) => 0
+   (bytesize p2) => 0
+   (sizeof p2) => 1
    (free! p) => p
    (null? p1) => false
    (release p1) => true
@@ -42,7 +49,9 @@
    (null? p2) => false
    (free! p2) => p2
    (null? p2) => true
-   (release p2) => true))
+   (release p2) => true
+   (free! (position! p3 100000)) => p3
+   (null? p3) => true))
 
 (facts
  "Test memcpy."

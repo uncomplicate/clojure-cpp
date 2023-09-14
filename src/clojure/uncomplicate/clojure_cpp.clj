@@ -8,7 +8,7 @@
 
 (ns uncomplicate.clojure-cpp
   (:require [uncomplicate.commons
-             [core :refer [Releaseable release let-release Info info Wrapper Wrappable
+             [core :refer [Releaseable release let-release Info info Wrapper Wrappable extract
                            Bytes Entries bytesize sizeof size]]
              [utils :refer [dragan-says-ex]]]
             [uncomplicate.fluokitten.core :refer [fmap!]])
@@ -97,8 +97,9 @@
   (Pointer/realloc p size))
 
 (defn free! [^Pointer p]
-  (Pointer/free p)
-  (.setNull p)
+  (when-not (Pointer/isNull p)
+    (Pointer/free (.position p 0))
+    (.setNull p))
   p)
 
 (defn memcmp ^long [^Pointer p1 ^Pointer p2 ^long size]
