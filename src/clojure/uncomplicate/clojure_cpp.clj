@@ -50,6 +50,7 @@
    :size-t SizeTPointer
    :bool BoolPointer
    :function FunctionPointer
+   :fn FunctionPointer
    :pointer PointerPointer
    :default Pointer
    Double/TYPE DoublePointer
@@ -99,6 +100,7 @@
 (defn free! [^Pointer p]
   (when-not (Pointer/isNull p)
     (Pointer/free (.position p 0))
+    (.deallocate p)
     (.setNull p))
   p)
 
@@ -150,6 +152,12 @@
     (dragan-says-ex "NULL pointer is not allowed in this part of code. Please do not use non-initialized pointers here."
                     {:x x})))
 
+(defn safe2 ^Pointer [^Pointer x]
+  (if (or (nil? x) (< 0 (.address x)))
+    x
+    (dragan-says-ex "NULL pointer is not allowed in this part of code. Please do not use non-initialized pointers here."
+                    {:x x})))
+
 (defn get-pointer
   (^Pointer [^Pointer p]
    (.getPointer p))
@@ -182,7 +190,8 @@
   (^IntPointer int-pointer [this])
   (^LongPointer long-pointer [this])
   (^FloatPointer float-pointer [this])
-  (^DoublePointer double-pointer [this]))
+  (^DoublePointer double-pointer [this])
+  (^FunctionPointer function-pointer [this]))
 
 (defprotocol PointerVec
   (pointer-vec [this]))
@@ -205,6 +214,12 @@
   (^Pointer [^Pointer x ^long i]
    (.getPointer (safe x) i)))
 
+(defn ptr2
+  (^Pointer [^Pointer x]
+   (safe2 x))
+  (^Pointer [^Pointer x ^long i]
+   (.getPointer (safe2 x) i)))
+
 (defn float-ptr*
   (^FloatPointer [^FloatPointer x]
    x)
@@ -216,6 +231,12 @@
    (safe x))
   (^FloatPointer [^FloatPointer x ^long i]
    (.getPointer (safe x) FloatPointer i)))
+
+(defn float-ptr2
+  (^FloatPointer [^FloatPointer x]
+   (safe2 x))
+  (^FloatPointer [^FloatPointer x ^long i]
+   (.getPointer (safe2 x) FloatPointer i)))
 
 (defn double-ptr*
   (^DoublePointer [^DoublePointer x]
@@ -229,6 +250,12 @@
   (^DoublePointer [^DoublePointer x ^long i]
    (.getPointer (safe x) DoublePointer i)))
 
+(defn double-ptr2
+  (^DoublePointer [^DoublePointer x]
+   (safe2 x))
+  (^DoublePointer [^DoublePointer x ^long i]
+   (.getPointer (safe2 x) DoublePointer i)))
+
 (defn long-ptr*
   (^LongPointer [^LongPointer x]
    x)
@@ -240,6 +267,12 @@
    (safe x))
   (^LongPointer [^LongPointer x ^long i]
    (.getPointer (safe x) LongPointer i)))
+
+(defn long-ptr2
+  (^LongPointer [^LongPointer x]
+   (safe2 x))
+  (^LongPointer [^LongPointer x ^long i]
+   (.getPointer (safe2 x) LongPointer i)))
 
 (defn int-ptr*
   (^IntPointer [^IntPointer x]
@@ -253,6 +286,12 @@
   (^IntPointer [^IntPointer x ^long i]
    (.getPointer (safe x) IntPointer i)))
 
+(defn int-ptr2
+  (^IntPointer [^IntPointer x]
+   (safe2 x))
+  (^IntPointer [^IntPointer x ^long i]
+   (.getPointer (safe2 x) IntPointer i)))
+
 (defn short-ptr*
   (^ShortPointer [^ShortPointer x]
    x)
@@ -264,6 +303,12 @@
    (safe x))
   (^ShortPointer [^ShortPointer x ^long i]
    (.getPointer (safe x) ShortPointer i)))
+
+(defn short-ptr2
+  (^ShortPointer [^ShortPointer x]
+   (safe2 x))
+  (^ShortPointer [^ShortPointer x ^long i]
+   (.getPointer (safe2 x) ShortPointer i)))
 
 (defn byte-ptr*
   (^BytePointer [^BytePointer x]
@@ -277,6 +322,12 @@
   (^BytePointer [^BytePointer x ^long i]
    (.getPointer (safe x) BytePointer i)))
 
+(defn byte-ptr2
+  (^BytePointer [^BytePointer x]
+   (safe2 x))
+  (^BytePointer [^BytePointer x ^long i]
+   (.getPointer (safe2 x) BytePointer i)))
+
 (defn clong-ptr*
   (^CLongPointer [^CLongPointer x]
    x)
@@ -288,6 +339,12 @@
    (safe x))
   (^CLongPointer [^CLongPointer x ^long i]
    (.getPointer (safe x) CLongPointer i)))
+
+(defn clong-ptr2
+  (^CLongPointer [^CLongPointer x]
+   (safe2 x))
+  (^CLongPointer [^CLongPointer x ^long i]
+   (.getPointer (safe2 x) CLongPointer i)))
 
 (defn size-t-ptr*
   (^SizeTPointer [^SizeTPointer x]
@@ -301,6 +358,12 @@
   (^SizeTPointer [^SizeTPointer x ^long i]
    (.getPointer (safe x) SizeTPointer i)))
 
+(defn size-t-ptr2
+  (^SizeTPointer [^SizeTPointer x]
+   (safe2 x))
+  (^SizeTPointer [^SizeTPointer x ^long i]
+   (.getPointer (safe2 x) SizeTPointer i)))
+
 (defn bool-ptr*
   (^BoolPointer [^BoolPointer x]
    x)
@@ -313,6 +376,12 @@
   (^BoolPointer [^BoolPointer x ^long i]
    (.getPointer (safe x) BoolPointer i)))
 
+(defn bool-ptr2
+  (^BoolPointer [^BoolPointer x]
+   (safe2 x))
+  (^BoolPointer [^BoolPointer x ^long i]
+   (.getPointer (safe2 x) BoolPointer i)))
+
 (defn bool-ptr*
   (^CharPointer [^CharPointer x]
    x)
@@ -324,6 +393,12 @@
    (safe x))
   (^CharPointer [^CharPointer x ^long i]
    (.getPointer (safe x) CharPointer i)))
+
+(defn bool-ptr2
+  (^CharPointer [^CharPointer x]
+   (safe2 x))
+  (^CharPointer [^CharPointer x ^long i]
+   (.getPointer (safe2 x) CharPointer i)))
 
 (defprotocol Accessor
   (get! [pointer dst!] [pointer dst! offset length])
@@ -351,6 +426,16 @@
     :clong clong-pointer
     :pointer pointer-pointer
     :bool bool-pointer
+    :function function-pointer
+    :uint8 byte-pointer
+    Float/TYPE float-pointer
+    Double/TYPE double-pointer
+    Long/TYPE long-pointer
+    Integer/TYPE int-pointer
+    Short/TYPE short-pointer
+    Byte/TYPE byte-pointer
+    Character/TYPE char-pointer
+    Boolean/TYPE bool-pointer
     nil))
 
 (let [get-deallocator (doto (.getDeclaredMethod Pointer "deallocator" (make-array Class 0))
@@ -423,7 +508,9 @@
     (float-pointer [this]
       (.getPointer this FloatPointer 0))
     (double-pointer [this]
-      (.getPointer this DoublePointer 0))))
+      (.getPointer this DoublePointer 0))
+    (function-pointer [this]
+      (.getPointer this FunctionPointer 0))))
 
 (extend-type nil
   PointerCreator
@@ -1061,3 +1148,49 @@
   Wrapper
   (extract [this]
     (get-keyword this)))
+
+(defn ^:private write-pointer [p ^java.io.Writer w]
+  (.write w (pr-str (-> (info p)
+                        (dissoc :deallocator)
+                        (assoc :entries (pointer-seq p))
+                        (update :address (partial format "0x%x"))))))
+
+(defmethod print-method Pointer
+  [p w]
+  (write-pointer p w))
+
+(defmethod print-method FloatPointer
+  [p w]
+  (write-pointer p w))
+
+(defmethod print-method DoublePointer
+  [p w]
+  (write-pointer p w))
+
+(defmethod print-method IntPointer
+  [p w]
+  (write-pointer p w))
+
+(defmethod print-method LongPointer
+  [p w]
+  (write-pointer p w))
+
+(defmethod print-method ShortPointer
+  [p w]
+  (write-pointer p w))
+
+(defmethod print-method BytePointer
+  [p w]
+  (write-pointer p w))
+
+(defmethod print-method SizeTPointer
+  [p w]
+  (write-pointer p w))
+
+(defmethod print-method CLongPointer
+  [p w]
+  (write-pointer p w))
+
+(defmethod print-method BoolPointer
+  [p w]
+  (write-pointer p w))
