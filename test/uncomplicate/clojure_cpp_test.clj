@@ -1,7 +1,18 @@
 (ns uncomplicate.clojure-cpp-test
   (:require [midje.sweet :refer [facts throws => roughly]]
-            [uncomplicate.commons.core :refer [info release with-release size bytesize sizeof]]
-            [uncomplicate.clojure-cpp :refer :all]))
+            [uncomplicate.commons
+             [core :refer [info release with-release size bytesize sizeof]]
+             [utils :as commons]]
+            [uncomplicate.clojure-cpp :refer :all])
+  (:import java.nio.IntBuffer))
+
+(facts
+ "Test pointer type mappings."
+ (pointer-types org.bytedeco.javacpp.FloatPointer) => :float
+ (pointer-types Float) => nil
+ (type-pointers :double) => org.bytedeco.javacpp.DoublePointer
+ (type-pointers Double/TYPE) => org.bytedeco.javacpp.DoublePointer
+ (pointer-types (type-pointers :byte)) => :byte)
 
 (facts
  "Test system info functions."
@@ -12,19 +23,23 @@
        tb (tracked-bytes)
        mtb (max-tracked-bytes)
        pc (pointers-count)]
-   (< 0 pb mpb) => true
-   (<= 0 apb mpb) => true
-   (<= 0 tb) => true
-   (< tb mtb) => true
-   (<= 0 pc tb) => true
-   (<= pb (physical-bytes pb)) => true))
+   (with-release [x (byte-pointer 10000)]
+     (< tb (tracked-bytes)) => true
+     (< 0 pb mpb) => true
+     (<= 0 apb mpb) => true
+     (<= 0 tb) => true
+     (< tb mtb) => true
+     (<= 0 pc tb) => true
+     (<= pb (physical-bytes pb)) => true
+     (<= pb tpb) => true)))
 
 (facts
  "Test memory (de)allocation."
  (let [p (pointer nil)
        p1 (malloc! 16)
        p2 (calloc! 2 8)
-       p3 (malloc! 128000)]
+       p3 (malloc! 128000)
+       p4 (realloc! p1 1000)]
    (null? p) => true
    (nil? p) => false
    (nil? (malloc! -1)) => true
@@ -32,16 +47,17 @@
    (nil? (calloc! -2 1)) => true
    (nil? (calloc! 1 -2)) => true
    (info p) => {:address 0 :capacity 0 :deallocator nil :limit 0 :position 0 :type :default}
-   (dissoc (info p1) :address) => {:capacity 0 :deallocator nil :limit 0 :position 0 :type :default}
+   (dissoc (info p1) :address) => {:capacity 16 :deallocator nil :limit 16 :position 0 :type :default}
    (pointer-seq p) => nil
-   (pointer-seq p1) => '()
-   (pointer-seq p2) => '()
-   (size p1) => 0
-   (bytesize p1) => 0
+   (pointer-seq p1) => (throws IllegalArgumentException)
+   (pointer-seq p2) => (throws IllegalArgumentException)
+   (size p1) => 16
+   (bytesize p1) => 16
    (sizeof p1) => 1
-   (size p2) => 0
-   (bytesize p2) => 0
+   (size p2) => 16
+   (bytesize p2) => 16
    (sizeof p2) => 1
+   (free! p) => p
    (free! p) => p
    (null? p1) => false
    (release p1) => true
@@ -51,19 +67,132 @@
    (null? p2) => true
    (release p2) => true
    (free! (position! p3 100000)) => p3
-   (null? p3) => true))
+   (null? p3) => true
+   (null? p4) => false
+   (free! p4) => p4))
+
+(facts
+ "Test memcmp"
+ (with-release [p1 (int-pointer [1 2 3])
+                p2 (int-pointer [-1 3 3 5])
+                p3 (pointer 0)]
+   (memcmp p1 p2) => -254
+   (memcmp p1 p3) => 1
+   (memcmp p1 p1) => 0))
 
 (facts
  "Test memcpy."
- (with-release [p (long-pointer 3)
+ (with-release [p (long-pointer [1 2 3])
                 p1 (long-pointer 3)]
    (nil? p) => false
-   (fill! p 100) => p
+   (fill! p1 100) => p1
    (pointer-seq p1) =not=> (pointer-seq p)
-   (memcpy! p p1 16) => p1
+   (memcpy! p1 p 0) => p
    (pointer-seq p1) =not=> (pointer-seq p)
    (memcpy! p p1 24) => p1
-   (pointer-seq p1) => (pointer-seq p)))
+   (memcpy! p p1 48) => (throws IndexOutOfBoundsException)
+   (memmove! p p1 48) => (throws IndexOutOfBoundsException)
+   (pointer-seq p1) => (pointer-seq p)
+   (pointer-vec (memcpy! (pointer p 1) (pointer p) 16)) => [2 3 3]
+   (pointer-vec (memmove! p p1)) => [2 3 3]))
+
+(facts
+ "Test pointer properties."
+ (with-release [p (malloc! 36)
+                p1 (calloc! 2 4)
+                int-p (int-pointer p)
+                byte-p (byte-pointer [0 0 0 1 0 0 1 2])]
+   (address p) => (address int-p)
+   (null? p) => false
+   (null? int-p) => false
+   (position p) => 0
+   (position int-p) => 0
+   (capacity p) => 36
+   (limit p) => (capacity p)
+   (bytesize p) => 36
+   (capacity int-p) => 9
+   (limit int-p) => (capacity int-p)
+   (capacity! p 37) => p
+   (capacity int-p) => 9
+   (capacity p1) => 8
+   (pointer-vec (int-pointer p1)) => [0 0]
+   (get-entry (get-pointer byte-p :int 1)) => 33619968
+   (get-pointer (get-pointer byte-p :int 1) :byte 2) [1 2]))
+
+(facts
+ "Test safe."
+ (with-release [p (pointer nil)
+                int-p (int-pointer 3)]
+   (safe nil) => (throws IllegalArgumentException)
+   (safe p) => (throws IllegalArgumentException)
+   (safe2 nil) => nil
+   (safe2 p) => (throws IllegalArgumentException)
+   (safe int-p) => int-p
+   (safe2 int-p) => int-p
+   (release int-p) => true
+   (safe int-p) => (throws IllegalArgumentException)
+   (safe2 int-p) => (throws IllegalArgumentException)))
+
+(defn test-coercion [constructor cast other ptr* ptr ptr2]
+  (facts
+   "Test coercion functions."
+   (with-release [p-123 (constructor [1 2 3])
+                  p-0 (constructor 0)
+                  p-nil (constructor nil)
+                  p-other (other 3)]
+     (null? p-nil) => true
+     (ptr* nil) => nil
+     (ptr* p-nil) => p-nil
+     (ptr* p-0) => p-0
+     (ptr* p-123) => p-123
+     (ptr* p-123 0) => p-123
+     (ptr* p-other) => p-other
+     (ptr* p-other 0) => p-other
+     (pointer-seq (ptr* p-123 -1)) => (map cast [1 2 3])
+     (pointer-seq (ptr* p-123 0)) => (map cast [1 2 3])
+     (pointer-seq (ptr* p-123 1)) => (map cast [2 3])
+     (pointer-seq (ptr* p-123 3)) => (map cast [])
+     (pointer-seq (ptr* p-123 4)) => (map cast [])
+     (ptr nil) => (throws IllegalArgumentException)
+     (ptr p-nil) => (throws IllegalArgumentException)
+     (ptr p-0) => p-0
+     (ptr p-123) => p-123
+     (ptr p-other) => (throws ClassCastException)
+     (ptr p-other 0) => (throws ClassCastException)
+     (ptr2 nil) => nil
+     (ptr2 p-nil) => (throws IllegalArgumentException)
+     (ptr2 p-0) => p-0
+     (ptr2 p-123) => p-123
+     (ptr2 p-other) => (throws ClassCastException)
+     (ptr2 p-other 0) => (throws ClassCastException))))
+
+(test-coercion float-pointer float int-pointer float-ptr* float-ptr float-ptr2)
+(test-coercion double-pointer double int-pointer double-ptr* double-ptr double-ptr2)
+(test-coercion long-pointer long int-pointer long-ptr* long-ptr long-ptr2)
+(test-coercion int-pointer int float-pointer int-ptr* int-ptr int-ptr2)
+(test-coercion short-pointer short int-pointer short-ptr* short-ptr short-ptr2)
+(test-coercion byte-pointer byte double-pointer byte-ptr* byte-ptr byte-ptr2)
+(test-coercion char-pointer char double-pointer char-ptr* char-ptr char-ptr2)
+(test-coercion bool-pointer boolean double-pointer bool-ptr* bool-ptr bool-ptr2)
+(test-coercion size-t-pointer long double-pointer size-t-ptr* size-t-ptr size-t-ptr2)
+(test-coercion clong-pointer long double-pointer clong-ptr* clong-ptr clong-ptr2)
+
+(facts
+ "Test buffer."
+ (with-release [p (pointer nil)
+                float-p (float-pointer 3)
+                int-p (int-pointer 1)]
+   (as-buffer p) => nil
+   (as-byte-buffer p) => nil
+   (let [int-buf (as-buffer int-p)
+         byte-buf (as-byte-buffer int-p)]
+     (put-entry! int-p 33) => int-p
+     (.get ^IntBuffer int-buf 0) => 33
+     (commons/get-int byte-buf 0) => 33
+     (.put ^IntBuffer int-buf 0 3) => int-buf
+     (get-entry int-p 0) => 3
+     (release int-p) => true
+     (.get ^IntBuffer int-buf 0) =not=> 3)))
 
 (defn test-array-pointer [constructor cast array]
   (facts
@@ -71,7 +200,8 @@
    (let [bp (constructor 3)
          bp1 (constructor bp)
          bp2 (constructor [100 101 102])
-         bp3 (constructor (array (map cast [100 101 102])))]
+         arr3 (array (map cast [100 101 102]))
+         bp3 (constructor arr3)]
      (constructor -1) => (throws Exception)
      (null? bp) => false
      (count (pointer-seq bp)) => 3
@@ -91,6 +221,8 @@
      (pointer-vec bp) => (vec (pointer-seq bp))
      (pointer-seq bp2) => (map cast [100 101 102])
      bp3 =not=> bp2
+     (put-entry! bp3 0 11) => bp3
+     (seq arr3) => (map cast [100 101 102])
      (release bp) => true
      (release bp1) => true
      (release bp2) => true
