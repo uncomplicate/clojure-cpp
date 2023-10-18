@@ -31,9 +31,9 @@
 
 ;; ================= System =================================
 
-(def ^:const pointer-types
+(def ^:const pointer-type
   "A mapping of JavaCPP pointer types to appropriate keywords.
-  (pointer-types FloatPointer) => :float
+  (pointer-type FloatPointer) => :float
   "
   {DoublePointer :double
    FloatPointer :float
@@ -49,9 +49,9 @@
    PointerPointer :pointer
    Pointer :default})
 
-(def ^:const type-pointers
+(def ^:const pointer-class
   "A mapping of Java number types and related keywords to appropriate JavaCPP pointer types.
-  (type-pointers :float) => FloatPointer
+  (pointer-class :float) => FloatPointer
   "
   {:double DoublePointer
    :float FloatPointer
@@ -316,7 +316,7 @@
 (defn get-pointer
   "Returns a new pointer that manages the memory block managed by `p`, starting from element `i`,
   within bounds 0 and `(capacity p)`. If provided with pointer's type, coerces the pointer to it
-  (please see [[type-pointers]] for available types).
+  (please see [[pointer-class]] for available types).
   This is useful when you need to change some of pointer's properties in parts of code, but leave
   the original pointer unchanged.
   "
@@ -325,7 +325,7 @@
   (^Pointer [^Pointer p ^long i]
    (.getPointer p (max 0 (min i (.capacity p)))))
   (^Pointer [^Pointer p type ^long i]
-   (.getPointer p (get type-pointers type type) (max 0 i))))
+   (.getPointer p (get pointer-class type type) (max 0 i))))
 
 ;; ================= Buffer =================================
 
@@ -337,7 +337,7 @@
 (defn as-buffer ^Buffer [^Pointer p]
   (.asBuffer p))
 
-(defprotocol PointerCreator
+(defprotocol ^:no-doc PointerCreator
   (pointer* [this] [this i] "Coerces a type into the appropriate `Pointer`."))
 
 (defprotocol TypedPointerCreator
@@ -912,10 +912,10 @@
   (put-entry! [pointer value] [pointer i value] "Puts value into pointer's memory block at index `i`.")
   (fill! [pointer value] "Sets all elements in pointer's memory block to `value`."))
 
-(defprotocol PutEntry
+(defprotocol ^:no-doc PutEntry
   (put-entry* [value pointer] [value i pointer] "A convenience method to facilitate BytePointer's put-entry!."))
 
-(defprotocol PutPointer
+(defprotocol ^:no-doc PutPointer
   (put-pointer-pointer* [src dst] [arg src dst] "A convenience method to facilitate PointerPointer's put!."))
 
 (defn type-pointer
@@ -958,7 +958,7 @@
     (info
       ([this]
        {:address (.address this)
-        :type (let [t (type this)] (get pointer-types t t))
+        :type (let [t (type this)] (get pointer-type t t))
         :position (.position this)
         :limit (.limit this)
         :capacity (.capacity this)
@@ -966,7 +966,7 @@
       ([this info-type]
        (case info-type
          :address (.address this)
-         :type (let [t (type this)] (get pointer-types t t))
+         :type (let [t (type this)] (get pointer-type t t))
          :position (.position this)
          :limit (.limit this)
          :capacity (.capacity this)

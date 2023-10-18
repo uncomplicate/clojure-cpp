@@ -18,7 +18,7 @@
                  [org.bytedeco/javacpp-platform "1.5.10-SNAPSHOT"]]
 
   :profiles {:dev {:plugins [[lein-midje "3.2.1"]
-                             [lein-codox "0.10.7"]]
+                             [lein-codox "0.10.8"]]
                    :global-vars {*warn-on-reflection* true
                                  *assert* false
                                  *unchecked-math* :warn-on-boxed

@@ -8,11 +8,11 @@
 
 (facts
  "Test pointer type mappings."
- (pointer-types org.bytedeco.javacpp.FloatPointer) => :float
- (pointer-types Float) => nil
- (type-pointers :double) => org.bytedeco.javacpp.DoublePointer
- (type-pointers Double/TYPE) => org.bytedeco.javacpp.DoublePointer
- (pointer-types (type-pointers :byte)) => :byte)
+ (pointer-type org.bytedeco.javacpp.FloatPointer) => :float
+ (pointer-type Float) => nil
+ (pointer-class :double) => org.bytedeco.javacpp.DoublePointer
+ (pointer-class Double/TYPE) => org.bytedeco.javacpp.DoublePointer
+ (pointer-type (pointer-class :byte)) => :byte)
 
 (facts
  "Test system info functions."
