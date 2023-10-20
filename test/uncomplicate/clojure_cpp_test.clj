@@ -1,8 +1,9 @@
 (ns uncomplicate.clojure-cpp-test
-  (:require [midje.sweet :refer [facts throws => roughly]]
+  (:require [midje.sweet :refer [facts throws =>]]
             [uncomplicate.commons
-             [core :refer [info release with-release size bytesize sizeof]]
+             [core :refer [info release with-release size bytesize sizeof double-fn long-fn]]
              [utils :as commons]]
+            [uncomplicate.fluokitten.core :refer :all]
             [uncomplicate.clojure-cpp :refer :all])
   (:import java.nio.IntBuffer))
 
@@ -310,3 +311,132 @@
      (position bp3) => (* (sizeof lp) (position lp))
      (capacity bp3) => (* (sizeof lp) (capacity lp))
      (limit bp3) => (* (sizeof lp) (limit lp)))))
+
+
+;; ========================= Fluokitten tests ===================================
+
+(defn test-pointer-functor [constructor f]
+  (with-release [fx (fn [] (constructor [1 2 3 4]))
+                 fy (fn [] (constructor [2 3 4 5 6]))
+                 x (fx)]
+
+    (facts "Functor implementation for typed pointers."
+
+           (pointer-seq (fmap! f (fx))) => (pointer-seq (constructor [1 2 3 4]))
+           (pointer-seq (fmap! f x)) => (pointer-seq x)
+
+           (pointer-seq (fmap! f (fx) (fy))) => (pointer-seq (constructor [3 5 7 9]))
+           (pointer-seq (fmap! f x (fy))) => (pointer-seq x)
+
+           (pointer-seq (fmap! f (fx) (fy) (fy))) => (pointer-seq (constructor [5 8 11 14]))
+           (pointer-seq (fmap! f x (fy) (fy))) => (pointer-seq x)
+
+           (pointer-seq (fmap! f (fx) (fy) (fy) (fy))) => (pointer-seq (constructor [7 11 15 19]))
+           (pointer-seq (fmap! f x (fy) (fy) (fy))) => (pointer-seq x)
+
+           (pointer-seq (fmap! + (fx) (fy) (fy) (fy) [(fy)])) => (throws clojure.lang.ExceptionInfo))))
+
+(defn test-pointer-op [constructor]
+  (with-release [x (constructor [1 2 3])
+                 y (constructor [4 5])
+                 z (constructor [])
+                 v1 (op x y)
+                 v2 (op y x)
+                 v3 (op x y x)
+                 v4 (op x y x y)
+                 v5 (op x y x y z z z x)
+                 t1 (constructor [1 2 3 4 5])
+                 t2 (constructor [4 5 1 2 3])
+                 t3 (constructor [1 2 3 4 5 1 2 3])
+                 t4 (constructor [1 2 3 4 5 1 2 3 4 5])
+                 t5 (constructor [1 2 3 4 5 1 2 3 4 5 1 2 3])]
+    (facts
+     "Pointer should be a Monodid."
+     (pointer-seq v1) => (pointer-seq t1)
+     (pointer-seq v2) => (pointer-seq t2)
+     (pointer-seq v3) => (pointer-seq t3)
+     (pointer-seq v4) => (pointer-seq t4)
+     (pointer-seq v5) => (pointer-seq t5))))
+
+(defn test-pointer-fold [constructor cast *' +']
+  (with-release [x (constructor [1 2 3 4])]
+    (facts "Fold implementation for pointers."
+
+           (fold x) => (cast 10)
+           (fold *' 1.0 x) => (cast 24)
+           (fold +' 0.0 x) => (fold x))))
+
+(defn test-pointer-reducible [constructor cast pf1 pf1o]
+  (with-release [y (constructor [2 3 4 5 6])
+                 x (constructor [1 2 3 4])]
+    (facts "Reducible implementation for pointers."
+
+           (fold pf1 1.0 x) => (cast 11)
+           (fold pf1o [] x) => (map cast [1 2 3 4])
+
+           (fold pf1 1.0 x y) => (cast 25)
+           (fold pf1o [] x y) => (map cast [3 5 7 9])
+
+           (fold pf1 1.0 x y y) => (cast 39)
+           (fold pf1o [] x y y) => (map cast [5 8 11 14])
+
+           (fold pf1 1.0 x y y y) => (cast 53)
+           (fold pf1o [] x y y y) => (map cast [7 11 15 19])
+
+           (fold + 1.0 x y y y) => (cast 53))))
+
+(test-pointer-functor double-pointer (double-fn +))
+(test-pointer-functor double-pointer +)
+(test-pointer-op double-pointer)
+(test-pointer-fold double-pointer double (double-fn *) (double-fn +))
+(test-pointer-fold double-pointer double * +)
+(test-pointer-reducible double-pointer double + conj)
+
+(test-pointer-functor float-pointer (double-fn +))
+(test-pointer-functor float-pointer +)
+(test-pointer-op float-pointer)
+(test-pointer-fold float-pointer double (double-fn *) (double-fn +))
+(test-pointer-fold float-pointer double * +)
+(test-pointer-reducible float-pointer double + conj)
+
+(test-pointer-functor long-pointer (long-fn +))
+(test-pointer-functor long-pointer +)
+(test-pointer-op long-pointer)
+(test-pointer-fold long-pointer long (long-fn *) (long-fn +))
+(test-pointer-fold long-pointer long * +)
+(test-pointer-reducible long-pointer long + conj)
+
+(test-pointer-functor int-pointer (long-fn +))
+(test-pointer-functor int-pointer +)
+(test-pointer-op int-pointer)
+(test-pointer-fold int-pointer long (long-fn *) (long-fn +))
+(test-pointer-fold int-pointer long * +)
+(test-pointer-reducible int-pointer long + conj)
+
+(test-pointer-functor short-pointer (long-fn +))
+(test-pointer-functor short-pointer +)
+(test-pointer-op short-pointer)
+(test-pointer-fold short-pointer long (long-fn *) (long-fn +))
+(test-pointer-fold short-pointer long * +)
+(test-pointer-reducible short-pointer long + conj)
+
+(test-pointer-functor byte-pointer (long-fn +))
+(test-pointer-functor byte-pointer +)
+(test-pointer-op byte-pointer)
+(test-pointer-fold byte-pointer long (long-fn *) (long-fn +))
+(test-pointer-fold byte-pointer long * +)
+(test-pointer-reducible byte-pointer long + conj)
+
+(test-pointer-functor clong-pointer (long-fn +))
+(test-pointer-functor clong-pointer +)
+(test-pointer-op clong-pointer)
+(test-pointer-fold clong-pointer long (long-fn *) (long-fn +))
+(test-pointer-fold clong-pointer long * +)
+(test-pointer-reducible clong-pointer long + conj)
+
+(test-pointer-functor size-t-pointer (long-fn +))
+(test-pointer-functor size-t-pointer +)
+(test-pointer-op size-t-pointer)
+(test-pointer-fold size-t-pointer long (long-fn *) (long-fn +))
+(test-pointer-fold size-t-pointer long * +)
+(test-pointer-reducible size-t-pointer long + conj)

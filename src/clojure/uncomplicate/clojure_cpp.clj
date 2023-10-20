@@ -7,74 +7,107 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.clojure-cpp
-  "TODO
+  "ClojureCPP is a Clojure library for integrating C/C++ based libraries available through JavaCPP.
+  It is much more than a wrapper around JavaCPP that hides Java interop. It enables you to use JavaCPP's
+  Pointer-based infrastucture the Clojure way; exposing what is absolutely necessary, automating whatever
+  boilerplate that can be automated under the hood, and protecting yourself from shooting yourself
+  in the foot with memory leaks and segmentation faults as much as possible (95%? 89%? who knows, but not 100%).
+  You still have to be careful, because you're stepping outside the JVM, but you'll write a lot less code,
+  your code will fit nicely with the rest of Clojure code in your program, and you will do the wrong
+  thing less often.
 
-  Please read JavaCPP javadoc for more internal details when necessary. Also, getting familiar with
-  common C library functions can be very helpful.
+  The center piece of this library is JavaCPP's `Pointer` class. Almost all JavaCPP interop methods
+  accept subclasses of `Pointer` as arguments (along with good old Java primitives such as `int` or `double`).
+  Very often, these pointers are pointers to off-heap primitive memory blocks that are not managed by
+  your JVM, which are managed by classes such as `DoublePointer` or `FloatPointer`. That is because
+  many C libraries use the respective arrays. Some libraries define their own structs; these are
+  typically represented as specialized `Pointer` sublasses by JavaCPP. Typical examples would be
+  CUDA or MKL wrappers. You can explore ClojureCUDA and Neanderthal code for real-world examples
+  of how to deal with these if you need to create a new wrapper for a new library. Fortunately,
+  if someone else has already done the integration, you might even write code without thinking
+  much outside of Clojure. Depending of your grasp of the basics of C and/or C++, it still might be
+  a good idea to read some [introduction to JavaCPP](https://github.com/bytedeco/javacpp).
+
+  Note that ClojureCPP is well integrated into Clojure and Uncomplicate family of libraries,
+  which means that lots of functionality is integrated into general functions such as
+  `release`, `size`, `bytesize`, `sizeof` from `uncomplicate.commons`, or `fmap`, `fmap!`,
+  `fold`, `op` from `uncomplicate.fluokitten`, or similar polymorphic functions. Ideally,
+  you'll prefer these over fiddling with lower-level ClojureCPP-specific code (when possible).
+
+  Here's a loose grouping of ClojureCPP functions:
+
+  - System functions give you some insight int o the overall system, memory, and allocations:
+  [[physical-bytes]], [[available-physical-bytes]], [[max-physical-bytes]], [[total-physical-bytes]],
+  [[tracked-bytes]], [[max-tracked-bytes]] and [[pointers-count]].
+
+  - Constructors. The pointers that you'll use throughout your code are explicitly created by these
+  constructors. Alternatively, you'll work with pointers returned by custom functions from many of
+  C libraries available through JavaCPP (such as CUDA etc.). You'll use these functions a lot.
+  [[pointer]], [[pointer-pointer]], [[byte-pointer]], [[keyword-pointer]], [[string-pointer]],
+  [[bool-pointer]], [[bool-pointer]], [[clong-pointer]], [[size-t-pointer]], [[char-pointer]],
+  [[short-pointer]], [[int-pointer]], [[long-pointer]], [[float-pointer]], [[double-pointer]],
+  and [[function-pointer]].
+
+  - Memory allocation functions with standard C counterparts (you typically don't have to use these
+  unless you're writing low-level stuff):
+  [[malloc!]], [[calloc!]], [[realloc!]], [[free!]], [[memcmp]], [[memcpy!]], [[memmove!]],
+  [[memset!]], and [[zero!]].
+
+  - General pointer features:
+
+  [[pointer-type]], [[pointer-class]], and [[type-pointer]] are convenience mappings between
+  keywords representing primitive types, built-in pointer classes, and pointer constructor functions,
+  so you can, for example, use `:float` or `Float` instead if importing `FloatPointer`. That also helps in
+  integration with other systems without coupling with JavaCPP types.
+
+  The following functions give you an insight into the properties of the pointer at hand. Most of
+  the time, these properties are set by other functions to their right values, but sometimes you
+  want to see details or even set something yourself (but be careful of papercuts!).
+  [[address]], [[null?]], [[capacity]], [[capacity!]], [[limit]], [[limit!]], [[position]], [[position!]],
+
+  - This group of functions do some pointer arithmetic, type casts, or type conversions:
+  [[get-pointer]], [[safe]], [[safe2]], [[ptr*]], [[ptr]], [[ptr2]],
+  [[float-ptr*]], [[float-ptr]], [[float-ptr2]], [[double-ptr*]], [[double-ptr]], [[double-ptr2]],
+  [[long-ptr*]], [[long-ptr]], [[long-ptr2]], [[int-ptr*]], [[int-ptr]], [[int-ptr2]],
+  [[short-ptr*]], [[short-ptr]], [[short-ptr2]], [[short-ptr*]], [[short-ptr]], [[short-ptr2]],
+  [[byte-ptr*]], [[byte-ptr]], [[byte-ptr2]], [[size-t-ptr*]], [[size-t-ptr]], [[size-t-ptr2]],
+  [[clong-ptr*]], [[clong-ptr]], [[clong-ptr2]], [[bool-ptr*]], [[bool-ptr]], [[bool-ptr2]],
+  [[char-ptr*]], [[char-ptr]], and [[char-ptr2]].
+
+  - Java and Clojure conversions to Java buffers or Clojure vectors and sequences:
+  [[as-byte-buffer]], [[as-buffer]], [[pointer-vec]], [[pointer-seq]],
+
+  - Polymorphic access to data in memory blocks managed by a pointer:
+  [[get!]], [[put!]], [[get-entry!]], [[put-entry!]], and [[fill!]]
+
+  - Raw access to bytes from a `BytePointer`:
+  [[get-keyword]], [[put-keyword!]], [[get-string]], [[put-string!]],
+  [[get-pointer-value]], [[put-pointer-value]], [[get-unsigned]], [[put-unsigned!]], [[get-bool]],
+  [[put-bool!]], [[get-char]], [[put-char!]], [[get-int]], [[put-int!]], [[get-short]], [[put-short!]],
+  [[get-long]], [[put-long!]], [[get-byte]], [[put-byte!]], [[get-short]], [[put-short!]],
+  [[get-double]], [[put-double!]], [[get-float]], [[put-float!]], and [[get-string-bytes]].
+
+  Please read [JavaCPP javadoc](http://bytedeco.org/javacpp/apidocs/overview-summary.html) for more internal details when necessary.
+  Also, getting familiar with common C library functions can be very helpful.
 
   Please check out `uncomplicate.clojure-cpp-test` for examples of how to use these functions!"
-  (:require [uncomplicate.commons
-             [core :refer [Releaseable release let-release Info info Wrapper Wrappable extract
-                           Bytes Entries bytesize sizeof size]]
+  (:require [clojure.string :refer [split]]
+            [uncomplicate.commons
+             [core :refer [Releaseable let-release Info info Wrapper Wrappable Bytes Entries bytesize size]]
              [utils :refer [dragan-says-ex]]]
-            [uncomplicate.fluokitten.core :refer [fmap!]])
+            [uncomplicate.fluokitten
+             [core :as fluokitten]
+             [protocols :refer [Functor PseudoFunctor Magma Foldable foldmap fold]]])
   (:import [java.nio Buffer ByteBuffer CharBuffer ShortBuffer IntBuffer LongBuffer FloatBuffer
             DoubleBuffer]
            java.nio.charset.Charset
-           [clojure.lang Seqable Keyword]
+           [clojure.lang Seqable Keyword IFn$LLL IFn$LDD IFn$LOO]
            [org.bytedeco.javacpp Pointer BytePointer CharPointer BoolPointer ShortPointer
             IntPointer LongPointer FloatPointer DoublePointer CLongPointer FunctionPointer
-            PointerPointer SizeTPointer PointerScope]
-           [uncomplicate.clojure_cpp.pointer StringPointer KeywordPointer]))
-
-;;TODO implement fluokitten support for FloatPointer etc.
+            PointerPointer SizeTPointer]
+           [uncomplicate.clojure_cpp StringPointer KeywordPointer]))
 
 ;; ================= System =================================
-
-(def ^:const pointer-type
-  "A mapping of JavaCPP pointer types to appropriate keywords.
-  (pointer-type FloatPointer) => :float
-  "
-  {DoublePointer :double
-   FloatPointer :float
-   LongPointer :long
-   IntPointer :int
-   ShortPointer :short
-   BytePointer :byte
-   CharPointer :char
-   CLongPointer :clong
-   SizeTPointer :size-t
-   BoolPointer :bool
-   FunctionPointer :function
-   PointerPointer :pointer
-   Pointer :default})
-
-(def ^:const pointer-class
-  "A mapping of Java number types and related keywords to appropriate JavaCPP pointer types.
-  (pointer-class :float) => FloatPointer
-  "
-  {:double DoublePointer
-   :float FloatPointer
-   :long LongPointer
-   :int IntPointer
-   :short ShortPointer
-   :byte BytePointer
-   :char CharPointer
-   :clong CLongPointer
-   :size-t SizeTPointer
-   :bool BoolPointer
-   :function FunctionPointer
-   :fn FunctionPointer
-   :pointer PointerPointer
-   :default Pointer
-   Double/TYPE DoublePointer
-   Float/TYPE FloatPointer
-   Long/TYPE LongPointer
-   Integer/TYPE IntPointer
-   Short/TYPE ShortPointer
-   Byte/TYPE BytePointer
-   Character/TYPE CharPointer
-   Boolean/TYPE BoolPointer})
 
 (defn physical-bytes
   "Amount of non-shared physical memory currently used by the process.
@@ -234,6 +267,51 @@
 
 ;; ================= Pointer =================================
 
+(def ^:const pointer-type
+  "A mapping of JavaCPP pointer types to appropriate keywords.
+  (pointer-type FloatPointer) => :float
+  "
+  {DoublePointer :double
+   FloatPointer :float
+   LongPointer :long
+   IntPointer :int
+   ShortPointer :short
+   BytePointer :byte
+   CharPointer :char
+   CLongPointer :clong
+   SizeTPointer :size-t
+   BoolPointer :bool
+   FunctionPointer :function
+   PointerPointer :pointer
+   Pointer :default})
+
+(def ^:const pointer-class
+  "A mapping of Java number types and related keywords to appropriate JavaCPP pointer types.
+  (pointer-class :float) => FloatPointer
+  "
+  {:double DoublePointer
+   :float FloatPointer
+   :long LongPointer
+   :int IntPointer
+   :short ShortPointer
+   :byte BytePointer
+   :char CharPointer
+   :clong CLongPointer
+   :size-t SizeTPointer
+   :bool BoolPointer
+   :function FunctionPointer
+   :fn FunctionPointer
+   :pointer PointerPointer
+   :default Pointer
+   Double/TYPE DoublePointer
+   Float/TYPE FloatPointer
+   Long/TYPE LongPointer
+   Integer/TYPE IntPointer
+   Short/TYPE ShortPointer
+   Byte/TYPE BytePointer
+   Character/TYPE CharPointer
+   Boolean/TYPE BoolPointer})
+
 (defn address
   "Returns the address of pointer `p`"
   ^long [^Pointer p]
@@ -276,7 +354,7 @@
   If `n` is negative, or larger than the available capacity, throws `IllegalArgumentexception`.
   "
   [^Pointer p ^long n]
-  (if (< 0 n (.capacity p))
+  (if (<= 0 n (.capacity p))
     (.limit p n)
     (throw (IndexOutOfBoundsException. (format "The requested position %d is larger than capacity %d."
                                                n (.capacity p))))))
@@ -294,7 +372,7 @@
   If `n` is negative, or larger than the available capacity, throws `IllegalArgumentexception`.
   "
   [^Pointer p ^long n]
-  (if (< 0 n (.capacity p))
+  (if (<= 0 n (.capacity p))
     (.position p n)
     (throw (IndexOutOfBoundsException. (format "The requested position %d is larger than capacity %d."
                                                n (.capacity p))))))
@@ -340,13 +418,16 @@
 (defprotocol ^:no-doc PointerCreator
   (pointer* [this] [this i] "Coerces a type into the appropriate `Pointer`."))
 
+(defprotocol ^:no-doc RawPointerCreator
+  (raw* [this] "Creates a new instance of this pointer's type with the same size."))
+
 (defprotocol TypedPointerCreator
   (^PointerPointer pointer-pointer [this] [this charset] "Converts an object into `PointerPointer`.")
   (^BytePointer byte-pointer [this] [this charset] "Converts an object into `BytePointer`.")
   (^KeywordPointer keyword-pointer [this] [this charset] "Converts an object into `KeywordPointer`.")
   (^StringPointer string-pointer [this] [this charset] "Converts an object into `StringPointer`.")
   (^BoolPointer bool-pointer [this] "Converts an object into `BoolPointer`.")
-  (^ClongPointer clong-pointer [this] "Converts an object into `ClongPointer`.")
+  (^CLongPointer clong-pointer [this] "Converts an object into `CLongPointer`.")
   (^SizeTPointer size-t-pointer [this] "Converts an object into `SizeTPointer`.")
   (^CharPointer char-pointer [this] "Converts an object into `CharPointer`.")
   (^ShortPointer short-pointer [this] "Converts an object into `ShortPointer`.")
@@ -1027,8 +1108,11 @@
   (pointer*
     ([_]
      (Pointer.))
-    ([this i]
+    ([_ _]
      (Pointer.)))
+  RawPointerCreator
+  (raw* [_]
+    (Pointer.))
   TypedPointerCreator
   (byte-pointer [_]
     (BytePointer.))
@@ -1117,41 +1201,35 @@
 (extend-number Byte BytePointer)
 (extend-number Character CharPointer)
 
-(extend-type Seqable
+(defmacro ^:private get* [class p i]
+  `(.get ~(with-meta p {:tag class}) ~i))
+
+(defmacro ^:private put* [class p i e]
+  `(.put ~(with-meta p {:tag class}) ~i ~e))
+
+(defmacro ^:private from-seqable [class cast]
+  `(fn [s#]
+     (let-release [res# (new ~class (count s#))]
+       (reduce (fn [i# e#]
+                 (put* ~class res# i# (~cast e#))
+                 (inc (long i#)))
+               0
+               s#)
+       res#)))
+
+(extend Seqable
   TypedPointerCreator
-  (byte-pointer [this]
-    (BytePointer. (byte-array this)))
-  (keyword-pointer [this]
-    (KeywordPointer. (byte-array this)))
-  (string-pointer [this]
-    (StringPointer. (byte-array this)))
-  (clong-pointer [this]
-    (CLongPointer. (long-array this)))
-  (size-t-pointer [this]
-    (SizeTPointer. (long-array this)))
-  (bool-pointer [this]
-    (let-release [n (count this)
-                  res (BoolPointer. n)]
-      (reduce (fn ^long [^long i e]
-                (.put res i (if e true false))
-                (inc i))
-              0
-              this)
-      res))
-  (pointer-pointer [this]
-    (pointer-pointer (into-array Pointer (map pointer this))))
-  (char-pointer [this]
-    (CharPointer. (char-array (map char this))))
-  (short-pointer [this]
-    (ShortPointer. (short-array this)))
-  (int-pointer [this]
-    (IntPointer. (int-array this)))
-  (long-pointer [this]
-    (LongPointer. (long-array this)))
-  (float-pointer [this]
-    (FloatPointer. (float-array this)))
-  (double-pointer [this]
-    (DoublePointer. (double-array this))))
+  {:byte-pointer (from-seqable BytePointer byte)
+   :clong-pointer (from-seqable CLongPointer long)
+   :size-t-pointer (from-seqable SizeTPointer long)
+   :bool-pointer (from-seqable BoolPointer boolean)
+   :pointer-pointer (from-seqable PointerPointer pointer)
+   :char-pointer (from-seqable CharPointer char)
+   :short-pointer (from-seqable ShortPointer short)
+   :int-pointer (from-seqable IntPointer int)
+   :long-pointer (from-seqable LongPointer long)
+   :float-pointer (from-seqable FloatPointer float)
+   :double-pointer (from-seqable DoublePointer double)})
 
 (extend-type Buffer
   PointerCreator
@@ -1334,9 +1412,9 @@
 (defn get-keyword
   "Converts a `BytePointer's` memory block to keyword. "
   (^Keyword [^BytePointer p]
-   (apply keyword (clojure.string/split (.getString p) #"/")))
+   (apply keyword (split (.getString p) #"/")))
   (^Keyword [^BytePointer p charset]
-   (apply keyword (clojure.string/split (if (string? charset)
+   (apply keyword (split (if (string? charset)
                                           (.getString p ^String charset)
                                           (.getString p ^Charset charset)) #"/"))))
 
@@ -1379,7 +1457,7 @@
   PutPointer
   (put-pointer-pointer* [charset-name src pp]
     (.putString ^PointerPointer pp
-                ^"[Ljava.lang.String;" (fmap! #(keyword-pointer* %) src)
+                ^"[Ljava.lang.String;" (fluokitten/fmap! #(keyword-pointer* %) src)
                 ^String charset-name)))
 
 (defn get-string
@@ -1593,6 +1671,9 @@
         this#)
        ([this# i#]
         (get-pointer this# i#)))
+     RawPointerCreator
+     (raw* [this#]
+       (new ~pt (size this#)))
      Accessor
      (get-entry
        ([this#]
@@ -1638,6 +1719,7 @@
              (recur (conj! res# (.get this# i#)) (inc i#))
              (persistent! res#)))))))
 
+(extend-pointer BytePointer zero? byte bytes byte-array)
 (extend-pointer CLongPointer zero? long longs long-array)
 (extend-pointer SizeTPointer zero? long longs long-array)
 (extend-pointer CharPointer (fn [c] (= \  (char c))) char chars #(char-array (map char %)))
@@ -1648,86 +1730,76 @@
 (extend-pointer DoublePointer zero? double doubles double-array)
 
 (extend-type BytePointer
-     PointerCreator
-     (pointer*
-       ([this]
-        this)
-       ([this i]
-        (get-pointer this i)))
-     Accessor
-     (get-entry
-       ([this]
-        (.get this))
-       ([this i]
-        (.get this (long i))))
-     (put-entry!
-       ([this value]
-        (put-entry* value this)
-        this)
-       ([this i value]
-        (put-entry* value i this)
-        this))
-     (fill! [this value]
-       (if (zero? (byte value))
-         (.zero this)
-         (.fill this value))
-       this)
-     (get!
-       ([p arr]
-        (.get p (bytes arr))
-        arr)
-       ([p arr offset length]
-        (.get p (bytes arr) offset length)
-        arr))
-     (put!
-       ([p obj]
-        (if (sequential? obj)
-          (.put p (byte-array obj))
-          (.put p (bytes obj)))
-        p)
-       ([p obj offset length]
-        (if (sequential? obj)
-          (.put p (byte-array (take length (drop offset obj))))
-          (.put p obj offset length))))
-     PointerVec
-     (pointer-vec [this#]
-       (let [n# (size this#)]
-         (loop [res# (transient []) i# 0]
-           (if (< i# n#)
-             (recur (conj! res# (.get this# i#)) (inc i#))
-             (persistent! res#))))))
+  Accessor
+  (get-entry
+    ([this]
+     (.get this))
+    ([this i]
+     (.get this (long i))))
+  (put-entry!
+    ([this value]
+     (put-entry* value this)
+     this)
+    ([this i value]
+     (put-entry* value i this)
+     this))
+  (fill! [this value]
+    (if (zero? (byte value))
+      (.zero this)
+      (.fill this value))
+    this)
+  (get!
+    ([p arr]
+     (.get p (bytes arr))
+     arr)
+    ([p arr offset length]
+     (.get p (bytes arr) offset length)
+     arr))
+  (put!
+    ([p obj]
+     (if (sequential? obj)
+       (.put p (byte-array obj))
+       (.put p (bytes obj)))
+     p)
+    ([p obj offset length]
+     (if (sequential? obj)
+       (.put p (byte-array (take length (drop offset obj))))
+       (.put p obj offset length)))))
 
 (extend-type BoolPointer
-     PointerCreator
-     (pointer*
-       ([this]
-        this)
-       ([this i]
-        (get-pointer this i)))
-     Accessor
-     (get-entry
-       ([this]
-        (.get this))
-       ([this i]
-        (.get this (long i))))
-     (put-entry!
-       ([this value]
-        (.put this (boolean value))
-        this)
-       ([this i value]
-        (.put this i (boolean value))
-        this))
-     (fill! [this value]
-       (dotimes [i (size this)]
-         (.put this i (boolean value)))
-       this)
-     PointerVec
-     (pointer-vec [this]
-       (let [n (size this)]
-         (loop [res (transient []) i 0]
-           (if (< i n)
-             (recur (conj! res (.get this i)) (inc i))
-             (persistent! res))))))
+  PointerCreator
+  (pointer*
+    ([this]
+     this)
+    ([this i]
+     (get-pointer this i)))
+  RawPointerCreator
+  (raw* [this]
+    (BoolPointer. (size this)))
+  Accessor
+  (get-entry
+    ([this]
+     (.get this))
+    ([this i]
+     (.get this (long i))))
+  (put-entry!
+    ([this value]
+     (.put this (boolean value))
+     this)
+    ([this i value]
+     (.put this i (boolean value))
+     this))
+  (fill! [this value]
+    (dotimes [i (size this)]
+      (.put this i (boolean value)))
+    this)
+  PointerVec
+  (pointer-vec [this]
+    (let [n (size this)]
+      (loop [res (transient []) i 0]
+        (if (< i n)
+          (recur (conj! res (.get this i)) (inc i))
+          (persistent! res))))))
 
 (defmacro ^:private extend-entry [number-type put-method]
   `(extend-type ~number-type
@@ -1749,6 +1821,15 @@
 (extend-entry Pointer put-pointer-value!)
 
 (extend-type PointerPointer
+  PointerCreator
+  (pointer*
+    ([this]
+     this)
+    ([this i]
+     (get-pointer this i)))
+  RawPointerCreator
+  (raw* [this]
+    (PointerPointer. (size this)))
   Accessor
   (get-entry
     ([this]
@@ -1764,8 +1845,8 @@
      this))
   (fill! [this value]
     (dotimes [i (size this)]
-     (.put this i ^Pointer value))
-   this)
+      (.put this i ^Pointer value))
+    this)
   (put!
     ([p obj]
      (put-pointer-pointer* obj p)
@@ -1782,11 +1863,25 @@
           (persistent! res#))))))
 
 (extend-type StringPointer
+  PointerCreator
+  (pointer*
+    ([this]
+     this))
+  RawPointerCreator
+  (raw* [this]
+    (StringPointer. (get-string this)))
   Wrapper
   (extract [this]
     (get-string this)))
 
 (extend-type KeywordPointer
+  PointerCreator
+  (pointer*
+    ([this]
+     this))
+  RawPointerCreator
+  (raw* [this]
+    (KeywordPointer. (get-keyword this)))
   Wrapper
   (extract [this]
     (get-keyword this)))
@@ -1844,3 +1939,194 @@
 (defmethod print-method KeywordPointer
   [p w]
   (write-pointer p w))
+
+;; ================================ Fluokitten ==================================
+
+(defn ^:private check-sizes
+  ([_]
+   true)
+  ([x y]
+   (<= (size x) (size y)))
+  ([x y z]
+   (<= (size x) (min (size y) (size z))))
+  ([x y z v]
+   (<= (size x) (min (size y) (size z) (size v))))
+  ([x y z v w]
+   (<= (size x) (min (size y) (size z) (size v) (size w)))))
+
+(def ^{:no-doc true :const true :private true} SIZES_MSG
+  "Pointer should have compatible sizes.")
+
+(defmacro ^:private map-entries-i [ptype f i & xs]
+  `(~f ~@(map #(list `get* ptype % i) xs)))
+
+(defmacro ^:private pointer-fmap* [ptype res f & xs]
+  (if (< (count xs) 5)
+    `(do
+       (if (check-sizes ~res ~@xs)
+         (dotimes [i# (size ~res)]
+           (put* ~ptype ~res i# (map-entries-i ~ptype ~f i# ~@xs)))
+         (dragan-says-ex SIZES_MSG {:xs (map info ~xs)}))
+       ~res)
+    `(dragan-says-ex "Pointer fmap supports up to 4 pointers.")))
+
+(defmacro ^:private pointer-reduce* [ptype etype acctype f accfn init & xs]
+  (if (< (count xs) 5)
+    `(if (check-sizes ~@xs)
+       (let [size-x# (size ~(first xs))]
+         (loop [i# 0 acc# (~acctype ~init)]
+           (if (< i# size-x#)
+             (recur (inc i#) (~acctype (~f acc# (~etype (map-entries-i ~ptype ~accfn i# ~@xs)))))
+             acc#)))
+       (dragan-says-ex SIZES_MSG {:xs (map info ~xs)}))
+    `(dragan-says-ex "Pointer reduction supports up to 4 pointers.")))
+
+(defmacro ^:private pointer-map-reduce* [ptype etype acctype f init g & xs]
+  (if (< (count xs) 5)
+    `(if (check-sizes ~@xs)
+       (let [size-x# (size ~(first xs))]
+         (loop [i# 0 acc# (~acctype ~init)]
+           (if (< i# size-x#)
+             (recur (inc i#) (~acctype (~f acc# (~etype (map-entries-i ~ptype ~g i# ~@xs)))))
+             acc#)))
+       (dragan-says-ex SIZES_MSG {:xs (map info ~xs)}))
+    `(dragan-says-ex "Pointer foldmap supports up to 4 pointers.")))
+
+(defmacro ^:private pointer-map-reduce-indexed* [ptype etype acctype f init g & xs]
+  (if (< (count xs) 5)
+    `(if (check-sizes ~@xs)
+       (let [size-x# (size ~(first xs))]
+         (loop [i# 0 acc# (~acctype ~init)]
+           (if (< i# size-x#)
+             (recur (inc i#) (~acctype (~f acc# i# (~etype (map-entries-i ~ptype ~g i# ~@xs)))))
+             acc#)))
+       (dragan-says-ex SIZES_MSG {:xs (map str ~xs)}))
+    `(dragan-says-ex "Pointer foldmap supports up to 4 vectors.")))
+
+(defmacro ^:private pointer-fmap
+  ([creator ptype]
+   `(fn
+      ([x# f#]
+       (let-release [res# (~creator x#)]
+         (pointer-fmap* ~ptype res# f# x#)))
+      ([x# f# y#]
+       (let-release [res# (~creator x#)]
+         (pointer-fmap* ~ptype res# f# x# y#)))
+      ([x# f# y# z#]
+       (let-release [res# (~creator x#)]
+         (pointer-fmap* ~ptype res# f# x# y# z#)))
+      ([x# f# y# z# v#]
+       (let-release [res# (~creator x#)]
+         (pointer-fmap* ~ptype res# f# x# y# z# v#)))
+      ([x# f# y# z# v# es#]
+       (dragan-says-ex "Pointer fmap supports up to 4 pointers."))))
+  ([ptype]
+   `(let [fmap-fn# (pointer-fmap raw* ~ptype)]
+      (fn
+        ([x# f#]
+         (fmap-fn# x# f#))
+        ([x# f# xs#]
+         (apply fmap-fn# x# f# xs#))))))
+
+(defmacro ^:private pointer-fold [ptype etype acctype accfn]
+  `(fn
+     ([x#]
+      (fold x# ~accfn (~accfn)))
+     ([x# f# init#]
+      (if (number? init#)
+        (pointer-reduce* ~ptype ~etype ~acctype f# ~accfn init# x#)
+        (pointer-reduce* ~ptype ~etype identity f# ~accfn init# x#)))
+     ([x# f# init# y#]
+      (if (number? init#)
+        (pointer-reduce* ~ptype ~etype ~acctype f# ~accfn init# x# y#)
+        (pointer-reduce* ~ptype ~etype identity f# ~accfn init# x# y#)))
+     ([x# f# init# y# z#]
+      (if (number? init#)
+        (pointer-reduce* ~ptype ~etype ~acctype f# ~accfn init# x# y# z#)
+        (pointer-reduce* ~ptype ~etype identity f# ~accfn init# x# y# z#)))
+     ([x# f# init# y# z# v#]
+      (if (number? init#)
+        (pointer-reduce* ~ptype ~etype ~acctype f# ~accfn init# x# y# z# v#)
+        (pointer-reduce* ~ptype ~etype identity f# ~accfn init# x# y# z# v#)))
+     ([_# _# _# _# _# _# _#]
+      (dragan-says-ex "fold with more than four arguments is not available for pointers."))))
+
+(defmacro ^:private pointer-foldmap [ptype etype acctype indexed-fn accfn]
+  `(fn
+     ([x# g#]
+      (foldmap x# g# ~accfn (~accfn)))
+     ([x# g# f# init#]
+      (if (number? init#)
+        (if (instance? ~indexed-fn g#)
+          (pointer-map-reduce-indexed* ~ptype ~etype ~acctype f# init# g# x#)
+          (pointer-map-reduce* ~ptype ~etype ~acctype f# init# g# x#))
+        (if (instance? ~indexed-fn g#)
+          (pointer-map-reduce-indexed* ~ptype ~etype ~identity f# init# g# x#)
+          (pointer-map-reduce* ~ptype ~etype identity f# init# g# x#))))
+     ([x# g# f# init# y#]
+      (if (number? init#)
+        (if (instance? ~indexed-fn g#)
+          (pointer-map-reduce-indexed* ~ptype ~etype ~acctype f# init# g# x# y#)
+          (pointer-map-reduce* ~ptype ~etype ~acctype f# init# g# x# y#))
+        (if (instance? ~indexed-fn g#)
+          (pointer-map-reduce-indexed* ~ptype ~etype ~identity f# init# g# x# y#)
+          (pointer-map-reduce* ~ptype ~etype identity f# init# g# x# y#))))
+     ([x# g# f# init# y# z#]
+      (if (number? init#)
+        (if (instance? ~indexed-fn g#)
+          (pointer-map-reduce-indexed* ~ptype ~etype ~acctype f# init# g# x# y# z#)
+          (pointer-map-reduce* ~ptype ~etype ~acctype f# init# g# x# y# z#))
+        (if (instance? ~indexed-fn g#)
+          (pointer-map-reduce-indexed* ~ptype ~etype ~identity f# init# g# x# y# z#)
+          (pointer-map-reduce* ~ptype ~etype identity f# init# g# x# y# z#))))
+     ([x# g# f# init# y# z# v#]
+      (if (number? init#)
+        (if (instance? ~indexed-fn g#)
+          (pointer-map-reduce-indexed* ~ptype ~etype ~acctype f# init# g# x# y# z# v#)
+          (pointer-map-reduce* ~ptype ~etype ~acctype f# init# g# x# y# z# v#))
+        (if (instance? ~indexed-fn g#)
+          (pointer-map-reduce-indexed* ~ptype ~etype ~identity f# init# g# x# y# z# v#)
+          (pointer-map-reduce* ~ptype ~etype identity f# init# g# x# y# z# v#))))
+     ([_# _# _# _# _# _# _# _#]
+      (dragan-says-ex "foldmap with more than four arguments is not available for pointers."))))
+
+(defn ^:private pointer-op [create-pointer]
+  (fn [x & ws]
+    (let-release [res (create-pointer (transduce (map size) + (size x) ws))]
+      (loop [pos 0 w x ws ws]
+        (when w
+          (if (instance? (class res) w)
+            (memcpy! w (get-pointer res pos) (bytesize w))
+            (dragan-says-ex "You can not apply op on pointers of different type." {:res res :w w}))
+          (recur (+ pos (size w)) (first ws) (next ws))))
+      res)))
+
+(defmacro ^:private extend-pointer-fluokitten [t constructor cast indexed-fn accfn]
+  `(extend ~t
+     Functor
+     {:fmap (pointer-fmap ~t)}
+     PseudoFunctor
+     {:fmap! (pointer-fmap identity ~t)}
+     Foldable
+     {:fold (pointer-fold ~t ~cast ~cast ~accfn)
+      :foldmap (pointer-foldmap ~t ~cast ~cast ~indexed-fn ~accfn)}
+     Magma
+     {:op (constantly (pointer-op ~constructor))}))
+
+(defn ^:private or-fn [& xs]
+  (some identity xs))
+
+(defn ^:private error [& _]
+  (dragan-says-ex "This pointer type does not support arithmetic."))
+
+(extend-pointer-fluokitten BytePointer byte-pointer byte IFn$LLL +)
+(extend-pointer-fluokitten CLongPointer clong-pointer long IFn$LLL +)
+(extend-pointer-fluokitten SizeTPointer size-t-pointer long IFn$LLL +)
+(extend-pointer-fluokitten BoolPointer bool-pointer boolean IFn$LOO or-fn)
+(extend-pointer-fluokitten PointerPointer pointer-pointer pointer IFn$LOO error)
+(extend-pointer-fluokitten CharPointer char-pointer char IFn$LOO error)
+(extend-pointer-fluokitten ShortPointer short-pointer short IFn$LLL +)
+(extend-pointer-fluokitten IntPointer int-pointer int IFn$LLL +)
+(extend-pointer-fluokitten LongPointer long-pointer long IFn$LLL +)
+(extend-pointer-fluokitten FloatPointer float-pointer float IFn$LDD +)
+(extend-pointer-fluokitten DoublePointer double-pointer double IFn$LDD +)

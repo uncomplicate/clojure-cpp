@@ -6,7 +6,7 @@
 //   the terms of this license.
 //   You must not remove this notice, or any other, from this software.
 
-package uncomplicate.clojure_cpp.pointer;
+package uncomplicate.clojure_cpp;
 
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
@@ -19,7 +19,6 @@ public class KeywordPointer extends BytePointer {
     public KeywordPointer (String name) {
         super(name);
     }
-
 
     public KeywordPointer (String name, Charset charset){
         super(name, charset);

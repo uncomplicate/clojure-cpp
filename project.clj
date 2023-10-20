@@ -18,7 +18,8 @@
                  [org.bytedeco/javacpp-platform "1.5.10-SNAPSHOT"]]
 
   :profiles {:dev {:plugins [[lein-midje "3.2.1"]
-                             [lein-codox "0.10.8"]]
+                             [lein-codox "0.10.8"]
+                             [com.github.clj-kondo/lein-clj-kondo "0.2.5"]]
                    :global-vars {*warn-on-reflection* true
                                  *assert* false
                                  *unchecked-math* :warn-on-boxed
