@@ -149,7 +149,7 @@
      (ptr* p-123 0) => p-123
      (ptr* p-other) => p-other
      (ptr* p-other 0) => p-other
-     (pointer-seq (ptr* p-123 -1)) => (map cast [1 2 3])
+     (rest (pointer-seq (ptr* p-123 -1))) => (map cast [1 2 3])
      (pointer-seq (ptr* p-123 0)) => (map cast [1 2 3])
      (pointer-seq (ptr* p-123 1)) => (map cast [2 3])
      (pointer-seq (ptr* p-123 3)) => (map cast [])

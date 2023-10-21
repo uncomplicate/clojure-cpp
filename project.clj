@@ -24,10 +24,11 @@
                                  *assert* false
                                  *unchecked-math* :warn-on-boxed
                                  *print-length* 128}
-                   :dependencies [[midje "1.10.9"]]
+                   :dependencies [[midje "1.10.9"]
+                                  [codox-theme-rdash "0.1.2"]]
                    :codox {:metadata {:doc/format :markdown}
-                           :src-dir-uri "http://github.com/uncomplicate/clojure-cpp/blob/master/"
-                           :src-linenum-anchor-prefix "L"
+                           :source-uri "http://github.com/uncomplicate/clojure-cpp/blob/master/{filepath}#L{line}"
+                           :themes [:rdash]
                            :output-path "docs/codox"}}}
 
   :repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]

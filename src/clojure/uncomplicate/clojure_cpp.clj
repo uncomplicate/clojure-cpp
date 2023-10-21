@@ -393,17 +393,20 @@
 
 (defn get-pointer
   "Returns a new pointer that manages the memory block managed by `p`, starting from element `i`,
-  within bounds 0 and `(capacity p)`. If provided with pointer's type, coerces the pointer to it
+  bounded by capacity `(capacity p)`. If provided with pointer's type, coerces the pointer to it
   (please see [[pointer-class]] for available types).
   This is useful when you need to change some of pointer's properties in parts of code, but leave
   the original pointer unchanged.
+  Please be careful: although negative values of `i` can be used normally as you go back and forth
+  through a memory block, it is your responsibility to make sure that you do not overstep into the
+  territory outside the originally allocated array. ClojureCPP doesn't have a way to do this for you.
   "
   (^Pointer [^Pointer p]
    (.getPointer p))
   (^Pointer [^Pointer p ^long i]
-   (.getPointer p (max 0 (min i (.capacity p)))))
+   (.getPointer p (min i (.capacity p))))
   (^Pointer [^Pointer p type ^long i]
-   (.getPointer p (get pointer-class type type) (max 0 i))))
+   (.getPointer p (get pointer-class type type) i)))
 
 ;; ================= Buffer =================================
 
@@ -474,34 +477,43 @@
   (^Pointer [^Pointer p]
    p)
   (^Pointer [^Pointer p ^long i]
-   (.getPointer p (max 0 (min i (.capacity p))))))
+   (.getPointer p (min i (.capacity p)))))
 
 (defn ptr
   "Checks pointer `p` for safety with [[safe]] and casts it into `Pointer`.
   Useful when metadata for avoiding reflection is not easily added in code,
   such as in macros. If provided with index `i`, behaves like [[get-pointer]].
+
+  Please be careful: although negative values of `i` can be used normally as you go back and forth
+  through a memory block, it is your responsibility to make sure that you do not overstep into the
+  territory outside the originally allocated array. ClojureCPP doesn't have a way to do this for you.
   "
   (^Pointer [^Pointer p]
    (safe p))
   (^Pointer [^Pointer p ^long i]
-   (.getPointer (safe p) (max 0 (min i (.capacity p))))))
+   (.getPointer (safe p) (min i (.capacity p)))))
 
 (defn ptr2
   "Checks pointer `p` for safety with [[safe2]] and casts it into `Pointer`.
   Useful when metadata for avoiding reflection is not easily added in code,
   such as in macros. If provided with index `i`, behaves like [[get-pointer]].
+
+  Please be careful: although negative values of `i` can be used normally as you go back and forth
+  through a memory block, it is your responsibility to make sure that you do not overstep into the
+  territory outside the originally allocated array. ClojureCPP doesn't have a way to do this for you.
   "
   (^Pointer [^Pointer p]
    (safe2 p))
   (^Pointer [^Pointer p ^long i]
-   (.getPointer (safe2 p) (max 0 (min i (.capacity p))))))
+   (.getPointer (safe2 p) (min i (.capacity p)))))
 
 (defn float-ptr*
   "Casts pointer `p` into `FloatPointer`. Useful when metadata for avoiding reflection
   is not easily added in code, such as in macros. Does not actually convert `p` into `FloatPointer`!.
   It just does the type cast to satisfy Clojure's compiler.
 
-  If provided with index `i`, behaves like [[get-pointer]].
+  If provided with index `i`, behaves like [[get-pointer]]. Negative `i` is allowed, but bee careful
+  to stay within the original memory block.
 
   Prefer this method to [[float-ptr]] in places when you only care about satisfying the compiler,
   and don't care about NULL pointers.
@@ -509,7 +521,7 @@
   (^FloatPointer [p]
    p)
   (^FloatPointer [^Pointer p ^long i]
-   (.getPointer p (max 0 (min i (.capacity p))))))
+   (.getPointer p (min i (.capacity p)))))
 
 (defn float-ptr
   "Checks pointer `p` for safety with [[safe]] and casts it into `FloatPointer`.
@@ -517,7 +529,8 @@
   Clojure's compiler. Useful when metadata for avoiding reflection is not easily added in code,
   such as in macros.
 
-  If provided with index `i`, behaves like [[get-pointer]]. It DOES actually require `p`
+  If provided with index `i`, behaves like [[get-pointer]]. Negative `i` is allowed, but bee careful
+  to stay within the original memory block. It DOES actually require `p`
   to be a `FloatPointer`!.
 
   Prefer this method to [[float-ptr*]] in places when NULL pointer can cause harm.
@@ -526,7 +539,7 @@
   (^FloatPointer [^FloatPointer p]
    (cast FloatPointer (safe p)))
   (^FloatPointer [^FloatPointer p ^long i]
-   (.getPointer ^FloatPointer (safe p) (max 0 (min i (.capacity p))))))
+   (.getPointer ^FloatPointer (safe p) (min i (.capacity p)))))
 
 (defn float-ptr2
   "Checks pointer `p` for safety with [[safe2]] and casts it into `FloatPointer`.
@@ -534,7 +547,8 @@
   Clojure's compiler. Useful when metadata for avoiding reflection is not easily added in code,
   such as in macros.
 
-  If provided with index `i`, behaves like [[get-pointer]]. It DOES actually require `p`
+  If provided with index `i`, behaves like [[get-pointer]]. Negative `i` is allowed, but bee careful
+  to stay within the original memory block. It DOES actually require `p`
   to be a `FloatPointer`!.
 
   Prefer this method to [[float-ptr*]] in places when NULL pointer can cause harm.
@@ -543,14 +557,15 @@
   (^FloatPointer [^FloatPointer p]
    (cast FloatPointer (safe2 p)))
   (^FloatPointer [^FloatPointer p ^long i]
-   (.getPointer ^FloatPointer (safe2 p) (max 0 (min i (.capacity p))))))
+   (.getPointer ^FloatPointer (safe2 p) (min i (.capacity p)))))
 
 (defn double-ptr*
   "Casts pointer `p` into `DoublePointer`. Useful when metadata for avoiding reflection
   is not easily added in code, such as in macros. Does not actually convert `p` into `DoublePointer`!.
   It just does the type cast to satisfy Clojure's compiler.
 
-  If provided with index `i`, behaves like [[get-pointer]].
+  If provided with index `i`, behaves like [[get-pointer]]. Negative `i` is allowed, but bee careful
+  to stay within the original memory block.
 
   Prefer this method to [[double-ptr]] in places when you only care about satisfying the compiler,
   and don't care about NULL pointers.
@@ -558,7 +573,7 @@
   (^DoublePointer [^DoublePointer p]
    p)
   (^DoublePointer [^Pointer p ^long i]
-   (.getPointer p (max 0 (min i (.capacity p))))))
+   (.getPointer p (min i (.capacity p)))))
 
 (defn double-ptr
   "Checks pointer `p` for safety with [[safe]] and casts it into `DoublePointer`.
@@ -566,7 +581,8 @@
   Clojure's compiler. Useful when metadata for avoiding reflection is not easily added in code,
   such as in macros.
 
-  If provided with index `i`, behaves like [[get-pointer]]. It DOES actually require `p`
+  If provided with index `i`, behaves like [[get-pointer]]. Negative `i` is allowed, but bee careful
+  to stay within the original memory block. It DOES actually require `p`
   to be a `DoublePointer`!.
 
   Prefer this method to [[double-ptr*]] in places when NULL pointer can cause harm.
@@ -575,7 +591,7 @@
   (^DoublePointer [^DoublePointer p]
    (cast DoublePointer (safe p)))
   (^DoublePointer [^DoublePointer p ^long i]
-   (.getPointer ^DoublePointer (safe p) (max 0 (min i (.capacity p))))))
+   (.getPointer ^DoublePointer (safe p) (min i (.capacity p)))))
 
 (defn double-ptr2
   "Checks pointer `p` for safety with [[safe2]] and casts it into `DoublePointer`.
@@ -583,7 +599,8 @@
   Clojure's compiler. Useful when metadata for avoiding reflection is not easily added in code,
   such as in macros.
 
-  If provided with index `i`, behaves like [[get-pointer]]. It DOES actually require `p`
+  If provided with index `i`, behaves like [[get-pointer]]. Negative `i` is allowed, but bee careful
+  to stay within the original memory block. It DOES actually require `p`
   to be a `DoublePointer`!.
 
   Prefer this method to [[double-ptr*]] in places when NULL pointer can cause harm.
@@ -592,14 +609,15 @@
   (^DoublePointer [^DoublePointer p]
    (cast DoublePointer (safe2 p)))
   (^DoublePointer [^DoublePointer p ^long i]
-   (.getPointer ^DoublePointer (safe2 p) (max 0 (min i (.capacity p))))))
+   (.getPointer ^DoublePointer (safe2 p) (min i (.capacity p)))))
 
 (defn long-ptr*
   "Casts pointer `p` into `LongPointer`. Useful when metadata for avoiding reflection
   is not easily added in code, such as in macros. Does not actually convert `p` into `LongPointer`!.
   It just does the type cast to satisfy Clojure's compiler.
 
-  If provided with index `i`, behaves like [[get-pointer]].
+  If provided with index `i`, behaves like [[get-pointer]]. Negative `i` is allowed, but bee careful
+  to stay within the original memory block.
 
   Prefer this method to [[long-ptr]] in places when you only care about satisfying the compiler,
   and don't care about NULL pointers.
@@ -607,7 +625,7 @@
   (^LongPointer [^LongPointer p]
    p)
   (^LongPointer [^Pointer p ^long i]
-   (.getPointer p (max 0 (min i (.capacity p))))))
+   (.getPointer p (min i (.capacity p)))))
 
 (defn long-ptr
   "Checks pointer `p` for safety with [[safe]] and casts it into `LongPointer`.
@@ -615,7 +633,8 @@
   Clojure's compiler. Useful when metadata for avoiding reflection is not easily added in code,
   such as in macros.
 
-  If provided with index `i`, behaves like [[get-pointer]]. It DOES actually require `p`
+  If provided with index `i`, behaves like [[get-pointer]]. Negative `i` is allowed, but bee careful
+  to stay within the original memory block. It DOES actually require `p`
   to be a `LongPointer`!.
 
   Prefer this method to [[long-ptr*]] in places when NULL pointer can cause harm.
@@ -624,7 +643,7 @@
   (^LongPointer [^LongPointer p]
    (cast LongPointer (safe p)))
   (^LongPointer [^LongPointer p ^long i]
-   (.getPointer ^LongPointer (safe p) (max 0 (min i (.capacity p))))))
+   (.getPointer ^LongPointer (safe p) (min i (.capacity p)))))
 
 (defn long-ptr2
   "Checks pointer `p` for safety with [[safe2]] and casts it into `LongPointer`.
@@ -632,7 +651,8 @@
   Clojure's compiler. Useful when metadata for avoiding reflection is not easily added in code,
   such as in macros.
 
-  If provided with index `i`, behaves like [[get-pointer]]. It DOES actually require `p`
+  If provided with index `i`, behaves like [[get-pointer]]. Negative `i` is allowed, but bee careful
+  to stay within the original memory block. It DOES actually require `p`
   to be a `LongPointer`!.
 
   Prefer this method to [[long-ptr*]] in places when NULL pointer can cause harm.
@@ -641,14 +661,15 @@
   (^LongPointer [^LongPointer p]
    (cast LongPointer (safe2 p)))
   (^LongPointer [^LongPointer p ^long i]
-   (.getPointer ^LongPointer (safe2 p) (max 0 (min i (.capacity p))))))
+   (.getPointer ^LongPointer (safe2 p) (min i (.capacity p)))))
 
 (defn int-ptr*
   "Casts pointer `p` into `IntPointer`. Useful when metadata for avoiding reflection
   is not easily added in code, such as in macros. Does not actually convert `p` into `IntPointer`!.
   It just does the type cast to satisfy Clojure's compiler.
 
-  If provided with index `i`, behaves like [[get-pointer]].
+  If provided with index `i`, behaves like [[get-pointer]]. Negative `i` is allowed, but bee careful
+  to stay within the original memory block.
 
   Prefer this method to [[int-ptr]] in places when you only care about satisfying the compiler,
   and don't care about NULL pointers.
@@ -656,7 +677,7 @@
   (^IntPointer [^IntPointer p]
    p)
   (^IntPointer [^Pointer p ^long i]
-   (.getPointer p (max 0 (min i (.capacity p))))))
+   (.getPointer p (min i (.capacity p)))))
 
 (defn int-ptr
   "Checks pointer `p` for safety with [[safe]] and casts it into `IntPointer`.
@@ -664,7 +685,8 @@
   Clojure's compiler. Useful when metadata for avoiding reflection is not easily added in code,
   such as in macros.
 
-  If provided with index `i`, behaves like [[get-pointer]]. It DOES actually convert `p`
+  If provided with index `i`, behaves like [[get-pointer]]. Negative `i` is allowed, but bee careful
+  to stay within the original memory block. It DOES actually convert `p`
   into `IntPointer`!.
 
   Prefer this method to [[int-ptr*]] in places when NULL pointer can cause harm.
@@ -673,7 +695,7 @@
   (^IntPointer [^IntPointer p]
    (cast IntPointer (safe p)))
   (^IntPointer [^IntPointer p ^long i]
-   (.getPointer ^IntPointer (safe p) (max 0 (min i (.capacity p))))))
+   (.getPointer ^IntPointer (safe p) (min i (.capacity p)))))
 
 (defn int-ptr2
   "Checks pointer `p` for safety with [[safe2]] and casts it into `IntPointer`.
@@ -681,7 +703,8 @@
   Clojure's compiler. Useful when metadata for avoiding reflection is not easily added in code,
   such as in macros.
 
-  If provided with index `i`, behaves like [[get-pointer]]. It DOES actually convert `p`
+  If provided with index `i`, behaves like [[get-pointer]]. Negative `i` is allowed, but bee careful
+  to stay within the original memory block. It DOES actually convert `p`
   into `IntPointer`!.
 
   Prefer this method to [[int-ptr*]] in places when NULL pointer can cause harm.
@@ -690,14 +713,15 @@
   (^IntPointer [^IntPointer p]
    (cast IntPointer (safe2 p)))
   (^IntPointer [^IntPointer p ^long i]
-   (.getPointer ^IntPointer (safe2 p) (max 0 (min i (.capacity p))))))
+   (.getPointer ^IntPointer (safe2 p) (min i (.capacity p)))))
 
 (defn short-ptr*
   "Casts pointer `p` into `ShortPointer`. Useful when metadata for avoiding reflection
   is not easily added in code, such as in macros. Does not actually convert `p` into `ShortPointer`!.
   It just does the type cast to satisfy Clojure's compiler.
 
-  If provided with index `i`, behaves like [[get-pointer]].
+  If provided with index `i`, behaves like [[get-pointer]]. Negative `i` is allowed, but bee careful
+  to stay within the original memory block.
 
   Prefer this method to [[short-ptr]] in places when you only care about satisfying the compiler,
   and don't care about NULL pointers.
@@ -705,7 +729,7 @@
   (^ShortPointer [^ShortPointer p]
    p)
   (^ShortPointer [^Pointer p ^long i]
-   (.getPointer p (max 0 (min i (.capacity p))))))
+   (.getPointer p (min i (.capacity p)))))
 
 (defn short-ptr
   "Checks pointer `p` for safety with [[safe]] and casts it into `ShortPointer`.
@@ -713,7 +737,8 @@
   Clojure's compiler. Useful when metadata for avoiding reflection is not easily added in code,
   such as in macros.
 
-  If provided with index `i`, behaves like [[get-pointer]]. It DOES actually convert `p`
+  If provided with index `i`, behaves like [[get-pointer]]. Negative `i` is allowed, but bee careful
+  to stay within the original memory block. It DOES actually convert `p`
   into `ShortPointer`!.
 
   Prefer this method to [[short-ptr*]] in places when NULL pointer can cause harm.
@@ -722,7 +747,7 @@
   (^ShortPointer [^ShortPointer p]
    (cast ShortPointer (safe p)))
   (^ShortPointer [^ShortPointer p ^long i]
-   (.getPointer ^ShortPointer (safe p) (max 0 (min i (.capacity p))))))
+   (.getPointer ^ShortPointer (safe p) (min i (.capacity p)))))
 
 (defn short-ptr2
   "Checks pointer `p` for safety with [[safe2]] and casts it into `ShortPointer`.
@@ -730,7 +755,8 @@
   Clojure's compiler. Useful when metadata for avoiding reflection is not easily added in code,
   such as in macros.
 
-  If provided with index `i`, behaves like [[get-pointer]]. It DOES actually convert `p`
+  If provided with index `i`, behaves like [[get-pointer]]. Negative `i` is allowed, but bee careful
+  to stay within the original memory block. It DOES actually convert `p`
   into `ShortPointer`!.
 
   Prefer this method to [[short-ptr*]] in places when NULL pointer can cause harm.
@@ -739,14 +765,15 @@
   (^ShortPointer [^ShortPointer p]
    (cast ShortPointer (safe2 p)))
   (^ShortPointer [^ShortPointer p ^long i]
-   (.getPointer ^ShortPointer (safe2 p) (max 0 (min i (.capacity p))))))
+   (.getPointer ^ShortPointer (safe2 p) (min i (.capacity p)))))
 
 (defn byte-ptr*
   "Casts pointer `p` into `BytePointer`. Useful when metadata for avoiding reflection
   is not easily added in code, such as in macros. Does not actually convert `p` into `BytePointer`!.
   It just does the type cast to satisfy Clojure's compiler.
 
-  If provided with index `i`, behaves like [[get-pointer]].
+  If provided with index `i`, behaves like [[get-pointer]]. Negative `i` is allowed, but bee careful
+  to stay within the original memory block.
 
   Prefer this method to [[byte-ptr]] in places when you only care about satisfying the compiler,
   and don't care about NULL pointers.
@@ -754,7 +781,7 @@
   (^BytePointer [^BytePointer p]
    p)
   (^BytePointer [^Pointer p ^long i]
-   (.getPointer p (max 0 (min i (.capacity p))))))
+   (.getPointer p (min i (.capacity p)))))
 
 (defn byte-ptr
   "Checks pointer `p` for safety with [[safe]] and casts it into `BytePointer`.
@@ -762,7 +789,8 @@
   Clojure's compiler. Useful when metadata for avoiding reflection is not easily added in code,
   such as in macros.
 
-  If provided with index `i`, behaves like [[get-pointer]]. It DOES actually convert `p`
+  If provided with index `i`, behaves like [[get-pointer]]. Negative `i` is allowed, but bee careful
+  to stay within the original memory block. It DOES actually convert `p`
   into `BytePointer`!.
 
   Prefer this method to [[byte-ptr*]] in places when NULL pointer can cause harm.
@@ -771,7 +799,7 @@
   (^BytePointer [^BytePointer p]
    (cast BytePointer (safe p)))
   (^BytePointer [^BytePointer p ^long i]
-   (.getPointer ^BytePointer (safe p) (max 0 (min i (.capacity p))))))
+   (.getPointer ^BytePointer (safe p) (min i (.capacity p)))))
 
 (defn byte-ptr2
   "Checks pointer `p` for safety with [[safe2]] and casts it into `BytePointer`.
@@ -779,7 +807,8 @@
   Clojure's compiler. Useful when metadata for avoiding reflection is not easily added in code,
   such as in macros.
 
-  If provided with index `i`, behaves like [[get-pointer]]. It DOES actually convert `p`
+  If provided with index `i`, behaves like [[get-pointer]]. Negative `i` is allowed, but bee careful
+  to stay within the original memory block. It DOES actually convert `p`
   into `BytePointer`!.
 
   Prefer this method to [[byte-ptr*]] in places when NULL pointer can cause harm.
@@ -788,14 +817,15 @@
   (^BytePointer [^BytePointer p]
    (cast BytePointer (safe2 p)))
   (^BytePointer [^BytePointer p ^long i]
-   (.getPointer ^BytePointer (safe2 p) (max 0 (min i (.capacity p))))))
+   (.getPointer ^BytePointer (safe2 p) (min i (.capacity p)))))
 
 (defn clong-ptr*
   "Casts pointer `p` into `CLongPointer`. Useful when metadata for avoiding reflection
   is not easily added in code, such as in macros. Does not actually convert `p` into `CLongPointer`!.
   It just does the type cast to satisfy Clojure's compiler.
 
-  If provided with index `i`, behaves like [[get-pointer]].
+  If provided with index `i`, behaves like [[get-pointer]]. Negative `i` is allowed, but bee careful
+  to stay within the original memory block.
 
   Prefer this method to [[clong-ptr]] in places when you only care about satisfying the compiler,
   and don't care about NULL pointers.
@@ -803,7 +833,7 @@
   (^CLongPointer [^CLongPointer p]
    p)
   (^CLongPointer [^Pointer p ^long i]
-   (.getPointer p (max 0 (min i (.capacity p))))))
+   (.getPointer p (min i (.capacity p)))))
 
 (defn clong-ptr
   "Checks pointer `p` for safety with [[safe]] and casts it into `CLongPointer`.
@@ -811,7 +841,8 @@
   Clojure's compiler. Useful when metadata for avoiding reflection is not easily added in code,
   such as in macros.
 
-  If provided with index `i`, behaves like [[get-pointer]]. It DOES actually convert `p`
+  If provided with index `i`, behaves like [[get-pointer]]. Negative `i` is allowed, but bee careful
+  to stay within the original memory block. It DOES actually convert `p`
   into `CLongPointer`!.
 
   Prefer this method to [[clong-ptr*]] in places when NULL pointer can cause harm.
@@ -820,7 +851,7 @@
   (^CLongPointer [^CLongPointer p]
    (cast CLongPointer (safe p)))
   (^CLongPointer [^CLongPointer p ^long i]
-   (.getPointer ^CLongPointer (safe p) (max 0 (min i (.capacity p))))))
+   (.getPointer ^CLongPointer (safe p) (min i (.capacity p)))))
 
 (defn clong-ptr2
   "Checks pointer `p` for safety with [[safe2]] and casts it into `CLongPointer`.
@@ -828,7 +859,8 @@
   Clojure's compiler. Useful when metadata for avoiding reflection is not easily added in code,
   such as in macros.
 
-  If provided with index `i`, behaves like [[get-pointer]]. It DOES actually convert `p`
+  If provided with index `i`, behaves like [[get-pointer]]. Negative `i` is allowed, but bee careful
+  to stay within the original memory block. It DOES actually convert `p`
   into `CLongPointer`!.
 
   Prefer this method to [[clong-ptr*]] in places when NULL pointer can cause harm.
@@ -837,14 +869,15 @@
   (^CLongPointer [^CLongPointer p]
    (cast CLongPointer (safe2 p)))
   (^CLongPointer [^CLongPointer p ^long i]
-   (.getPointer ^CLongPointer (safe2 p) (max 0 (min i (.capacity p))))))
+   (.getPointer ^CLongPointer (safe2 p) (min i (.capacity p)))))
 
 (defn size-t-ptr*
   "Casts pointer `p` into `SizeTPointer`. Useful when metadata for avoiding reflection
   is not easily added in code, such as in macros. Does not actually convert `p` into `SizeTPointer`!.
   It just does the type cast to satisfy Clojure's compiler.
 
-  If provided with index `i`, behaves like [[get-pointer]].
+  If provided with index `i`, behaves like [[get-pointer]]. Negative `i` is allowed, but bee careful
+  to stay within the original memory block.
 
   Prefer this method to [[size-t-ptr]] in places when you only care about satisfying the compiler,
   and don't care about NULL pointers.
@@ -852,7 +885,7 @@
   (^SizeTPointer [^SizeTPointer p]
    p)
   (^SizeTPointer [^Pointer p ^long i]
-   (.getPointer p (max 0 (min i (.capacity p))))))
+   (.getPointer p (min i (.capacity p)))))
 
 (defn size-t-ptr
   "Checks pointer `p` for safety with [[safe]] and casts it into `SizeTPointer`.
@@ -860,7 +893,8 @@
   Clojure's compiler. Useful when metadata for avoiding reflection is not easily added in code,
   such as in macros.
 
-  If provided with index `i`, behaves like [[get-pointer]]. It DOES actually convert `p`
+  If provided with index `i`, behaves like [[get-pointer]]. Negative `i` is allowed, but bee careful
+  to stay within the original memory block. It DOES actually convert `p`
   into `SizeTPointer`!.
 
   Prefer this method to [[size-t-ptr*]] in places when NULL pointer can cause harm.
@@ -869,7 +903,7 @@
   (^SizeTPointer [^SizeTPointer p]
    (cast SizeTPointer (safe p)))
   (^SizeTPointer [^SizeTPointer p ^long i]
-   (.getPointer ^SizeTPointer (safe p) (max 0 (min i (.capacity p))))))
+   (.getPointer ^SizeTPointer (safe p) (min i (.capacity p)))))
 
 (defn size-t-ptr2
   "Checks pointer `p` for safety with [[safe2]] and casts it into `SizeTPointer`.
@@ -877,7 +911,8 @@
   Clojure's compiler. Useful when metadata for avoiding reflection is not easily added in code,
   such as in macros.
 
-  If provided with index `i`, behaves like [[get-pointer]]. It DOES actually require `p`
+  If provided with index `i`, behaves like [[get-pointer]]. Negative `i` is allowed, but bee careful
+  to stay within the original memory block. It DOES actually require `p`
   to be a `SizeTPointer`!.
 
   Prefer this method to [[size-t-ptr*]] in places when NULL pointer can cause harm.
@@ -886,14 +921,15 @@
   (^SizeTPointer [^SizeTPointer p]
    (cast SizeTPointer (safe2 p)))
   (^SizeTPointer [^SizeTPointer p ^long i]
-   (.getPointer ^SizeTPointer (safe2 p) (max 0 (min i (.capacity p))))))
+   (.getPointer ^SizeTPointer (safe2 p) (min i (.capacity p)))))
 
 (defn bool-ptr*
   "Casts pointer `p` into `BoolPointer`. Useful when metadata for avoiding reflection
   is not easily added in code, such as in macros. Does not actually convert `p` into `BoolPointer`!.
   It just does the type cast to satisfy Clojure's compiler.
 
-  If provided with index `i`, behaves like [[get-pointer]].
+  If provided with index `i`, behaves like [[get-pointer]]. Negative `i` is allowed, but bee careful
+  to stay within the original memory block.
 
   Prefer this method to [[bool-ptr]] in places when you only care about satisfying the compiler,
   and don't care about NULL pointers.
@@ -901,7 +937,7 @@
   (^BoolPointer [^BoolPointer p]
    p)
   (^BoolPointer [^Pointer p ^long i]
-   (.getPointer p (max 0 (min i (.capacity p))))))
+   (.getPointer p (min i (.capacity p)))))
 
 (defn bool-ptr
   "Checks pointer `p` for safety with [[safe]] and casts it into `BoolPointer`.
@@ -909,7 +945,8 @@
   Clojure's compiler. Useful when metadata for avoiding reflection is not easily added in code,
   such as in macros.
 
-  If provided with index `i`, behaves like [[get-pointer]]. It DOES actually require `p`
+  If provided with index `i`, behaves like [[get-pointer]]. Negative `i` is allowed, but bee careful
+  to stay within the original memory block. It DOES actually require `p`
   to be a `BoolPointer`!.
 
   Prefer this method to [[bool-ptr*]] in places when NULL pointer can cause harm.
@@ -918,7 +955,7 @@
   (^BoolPointer [^BoolPointer p]
    (cast BoolPointer (safe p)))
   (^BoolPointer [^BoolPointer p ^long i]
-   (.getPointer ^BoolPointer (safe p) (max 0 (min i (.capacity p))))))
+   (.getPointer ^BoolPointer (safe p) (min i (.capacity p)))))
 
 (defn bool-ptr2
   "Checks pointer `p` for safety with [[safe2]] and casts it into `BoolPointer`.
@@ -926,7 +963,8 @@
   Clojure's compiler. Useful when metadata for avoiding reflection is not easily added in code,
   such as in macros.
 
-  If provided with index `i`, behaves like [[get-pointer]]. It DOES actually require `p`
+  If provided with index `i`, behaves like [[get-pointer]]. Negative `i` is allowed, but bee careful
+  to stay within the original memory block. It DOES actually require `p`
   to be a `BoolPointer`!.
 
   Prefer this method to [[bool-ptr*]] in places when NULL pointer can cause harm.
@@ -935,14 +973,15 @@
   (^BoolPointer [^BoolPointer p]
    (cast BoolPointer (safe2 p)))
   (^BoolPointer [^BoolPointer p ^long i]
-   (.getPointer ^BoolPointer (safe2 p) (max 0 (min i (.capacity p))))))
+   (.getPointer ^BoolPointer (safe2 p) (min i (.capacity p)))))
 
 (defn char-ptr*
   "Casts pointer `p` into `CharPointer`. Useful when metadata for avoiding reflection
   is not easily added in code, such as in macros. Does not actually convert `p` into `CharPointer`!.
   It just does the type cast to satisfy Clojure's compiler.
 
-  If provided with index `i`, behaves like [[get-pointer]].
+  If provided with index `i`, behaves like [[get-pointer]]. Negative `i` is allowed, but bee careful
+  to stay within the original memory block.
 
   Prefer this method to [[char-ptr]] in places when you only care about satisfying the compiler,
   and don't care about NULL pointers.
@@ -950,7 +989,7 @@
   (^CharPointer [^CharPointer p]
    p)
   (^CharPointer [^Pointer p ^long i]
-   (.getPointer p (max 0 (min i (.capacity p))))))
+   (.getPointer p (min i (.capacity p)))))
 
 (defn char-ptr
   "Checks pointer `p` for safety with [[safe]] and casts it into `CharPointer`.
@@ -958,7 +997,8 @@
   Clojure's compiler. Useful when metadata for avoiding reflection is not easily added in code,
   such as in macros.
 
-  If provided with index `i`, behaves like [[get-pointer]]. It DOES actually require `p`
+  If provided with index `i`, behaves like [[get-pointer]]. Negative `i` is allowed, but bee careful
+  to stay within the original memory block. It DOES actually require `p`
   to be a `CharPointer`!.
 
   Prefer this method to [[char-ptr*]] in places when NULL pointer can cause harm.
@@ -967,7 +1007,7 @@
   (^CharPointer [^CharPointer p]
    (cast CharPointer (safe p)))
   (^CharPointer [^CharPointer p ^long i]
-   (.getPointer ^CharPointer (safe p) (max 0 (min i (.capacity p))))))
+   (.getPointer ^CharPointer (safe p) (min i (.capacity p)))))
 
 (defn char-ptr2
   "Checks pointer `p` for safety with [[safe2]] and casts it into `CharPointer`.
@@ -975,7 +1015,8 @@
   Clojure's compiler. Useful when metadata for avoiding reflection is not easily added in code,
   such as in macros.
 
-  If provided with index `i`, behaves like [[get-pointer]]. It DOES actually require `p`
+  If provided with index `i`, behaves like [[get-pointer]]. Negative `i` is allowed, but bee careful
+  to stay within the original memory block. It DOES actually require `p`
   to be a `CharPointer`!.
 
   Prefer this method to [[char-ptr*]] in places when NULL pointer can cause harm.
@@ -984,7 +1025,7 @@
   (^CharPointer [^CharPointer p]
    (cast CharPointer (safe2 p)))
   (^CharPointer [^CharPointer p ^long i]
-   (.getPointer ^CharPointer (safe2 p) (max 0 (min i (.capacity p))))))
+   (.getPointer ^CharPointer (safe2 p) (min i (.capacity p)))))
 
 (defprotocol Accessor
   (get! [pointer dst!] [pointer dst! offset length] "Copies data from pointer's memory block into `dst`, which is typically a Java array.")
