@@ -1456,8 +1456,8 @@
    (apply keyword (split (.getString p) #"/")))
   (^Keyword [^BytePointer p charset]
    (apply keyword (split (if (string? charset)
-                                          (.getString p ^String charset)
-                                          (.getString p ^Charset charset)) #"/"))))
+                           (.getString p ^String charset)
+                           (.getString p ^Charset charset)) #"/"))))
 
 
 (defn put-keyword!
