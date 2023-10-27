@@ -93,11 +93,11 @@
   Please check out `uncomplicate.clojure-cpp-test` for examples of how to use these functions!"
   (:require [clojure.string :refer [split]]
             [uncomplicate.commons
-             [core :refer [Releaseable let-release Info info Wrapper Wrappable Bytes Entries bytesize size]]
+             [core :refer [Releaseable let-release Info info Bytes Entries bytesize size]]
              [utils :refer [dragan-says-ex]]]
             [uncomplicate.fluokitten
              [core :as fluokitten]
-             [protocols :refer [Functor PseudoFunctor Magma Foldable foldmap fold]]])
+             [protocols :refer [Functor PseudoFunctor Magma Foldable foldmap fold Comonad]]])
   (:import [java.nio Buffer ByteBuffer CharBuffer ShortBuffer IntBuffer LongBuffer FloatBuffer
             DoubleBuffer]
            java.nio.charset.Charset
@@ -1094,12 +1094,9 @@
          :capacity (.capacity this)
          :deallocator (.invoke get-deallocator this empty-array)
          nil)))
-    Wrapper
+    Comonad
     (extract [this]
       (if-not (null? this) this nil))
-    Wrappable
-    (wrap [this]
-      this)
     Bytes
     (bytesize* [this]
       (max 0 (* (.sizeof this) (- (.limit this) (.position this)))))
@@ -1911,7 +1908,7 @@
   RawPointerCreator
   (raw* [this]
     (StringPointer. (get-string this)))
-  Wrapper
+  Comonad
   (extract [this]
     (get-string this)))
 
@@ -1923,7 +1920,7 @@
   RawPointerCreator
   (raw* [this]
     (KeywordPointer. (get-keyword this)))
-  Wrapper
+  Comonad
   (extract [this]
     (get-keyword this)))
 
