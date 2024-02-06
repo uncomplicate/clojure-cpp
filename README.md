@@ -8,11 +8,14 @@
 
 [Adopt your pet function](https://dragan.rocks/articles/18/Patreon-Announcement-Adopt-a-Function) and [become a patron](https://patreon.com/draganrocks).
 
-Clojure C++ is a Clojure library for interop with native C++ based libraries. It is based based on Bytedeco JavaCPP
+Clojure C++ is a Clojure library for interop with native C++ based libraries. It is based based on Bytedeco JavaCPP.
+
+Please see the [API documentation](./codox) as well as the books and source code of the projects that use Clojure CPP [Neanderthal](https://neanderthal.uncomplicate.org),
+[ClojureCUDA](https://clojurecuda.uncomplicate.org), [Deep Diamond](https://github.com/uncomplicate/deep-diamond).
 
 
 ## License
 
-Copyright © 2023 Dragan Djuric
+Copyright © 2023-2024 Dragan Djuric
 
 Distributed under the Eclipse Public License either version 1.0 or (at your option) any later version.
