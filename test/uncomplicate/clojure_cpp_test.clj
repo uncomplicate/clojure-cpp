@@ -207,8 +207,9 @@
      (null? bp) => false
      (count (pointer-seq bp)) => 3
      (count (pointer-seq bp1)) => 3
-     (get-entry bp 0) =not=> (cast 0)
-     (get-entry bp1 0) =not=> (cast 0)
+     ;; (get-entry bp 0) =not=> (cast 0) ;; not random on MacOS
+     ;; (get-entry bp1 0) =not=> (cast 0) ;; not random on MacOS
+     (put-entry! bp 0 1) => bp
      (zero! bp) => bp
      (get-entry bp1 0) => (cast 0)
      (put-entry! bp 0 1) => bp
