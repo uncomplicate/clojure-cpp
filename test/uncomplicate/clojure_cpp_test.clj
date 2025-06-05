@@ -275,7 +275,8 @@
                 p3 (int-pointer 3)]
    (fill! p11 2) => p11
    (pointer-seq (fill! p3 Integer/MAX_VALUE)) => (repeat 3 Integer/MAX_VALUE)
-   (pointer-seq (put-entry! p11 (int 111))) => [111 0 0 0 2 2 2 2 2 2 2]))
+   (pointer-seq (put-entry! p11 (int 111))) => [111 0 0 0 2 2 2 2 2 2 2]
+   (pointer-seq (zero! p3)) => (repeat 3 0)))
 
 (facts
  "Test Pointer coercion properties."
