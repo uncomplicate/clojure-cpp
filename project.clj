@@ -6,7 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject org.uncomplicate/clojure-cpp "0.4.1-SNAPSHOT"
+(defproject org.uncomplicate/clojure-cpp "0.5.0-SNAPSHOT"
   :description "Clojure native interop through JavaCPP"
   :author "Dragan Djuric"
   :url "http://github.com/uncomplicate/clojure-cpp"
@@ -29,7 +29,9 @@
                    :codox {:metadata {:doc/format :markdown}
                            :source-uri "http://github.com/uncomplicate/clojure-cpp/blob/master/{filepath}#L{line}"
                            :themes [:rdash]
-                           :output-path "docs/codox"}}}
+                           :output-path "docs/codox"}
+                   :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
+                                        "--enable-native-access=ALL-UNNAMED"]}}
 
   :repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]
 

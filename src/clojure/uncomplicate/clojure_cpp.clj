@@ -151,6 +151,20 @@
   ^long []
   (Pointer/totalCount))
 
+(defn safe
+  "If pointer `p` is neither `nil` nor `NULL`, returns `p`. Otherwise, throws an `IllegalArgumentexception`."
+  ^Pointer [^Pointer p]
+  (if-not (Pointer/isNull p)
+    p
+    (throw (IllegalArgumentException. "Neither nil nor NULL pointer is allowed in this part of code. Please do not use non-initialized pointers here."))))
+
+(defn safe2
+  "If pointer `p` is not `NULL`, returns `p`. Otherwise, throws an `IllegalArgumentexception`."
+  ^Pointer [^Pointer p]
+  (if (or (nil? p) (< 0 (.address p)))
+    p
+    (throw (IllegalArgumentException. "NULL pointer is not allowed in this part of code. Please do not use non-initialized pointers here."))))
+
 ;; ================= A set of standard C functions =================================
 
 (defn malloc!
@@ -216,7 +230,8 @@
   (memcmp (byte-pointer [1 2 3]) (byte-pointer [1 1 4]) 3) => 1
   "
   (^long [^Pointer p1 ^Pointer p2 ^long byte-size]
-   (if (<= 0 byte-size (min (bytesize p1) (bytesize p2)))
+   (if (and (not (Pointer/isNull p1) (not (Pointer/isNull p2)))
+            (<= 0 byte-size (min (bytesize p1) (bytesize p2))))
      (Pointer/memcmp p1 p2 byte-size)
      (throw (IndexOutOfBoundsException.
              (format "You're trying to compare data outside the bounds of %s memory block."
@@ -229,7 +244,8 @@
   bounds of `src` and `dst`, throws `IndexOutOfBoundsException`.
   "
   ([^Pointer src ^Pointer dst ^long byte-size]
-   (if (<= 0 byte-size (min (bytesize src) (bytesize dst)))
+   (if (and (not (Pointer/isNull src)) (not (Pointer/isNull dst))
+            (<= 0 byte-size (min (bytesize src) (bytesize dst))))
      (Pointer/memcpy dst src byte-size)
      (throw (IndexOutOfBoundsException.
              (format "You're trying to copy outside the bounds of %s memory block."
@@ -243,7 +259,8 @@
   If `byte-size` is not within bounds of `src` and `dst`, throws `IndexOutOfBoundsException`.
   "
   ([^Pointer src ^Pointer dst ^long byte-size]
-   (if (<= 0 byte-size (min (bytesize src) (bytesize dst)))
+   (if (and (not (Pointer/isNull src)) (not (Pointer/isNull dst))
+            (<= 0 byte-size (min (bytesize src) (bytesize dst))))
      (Pointer/memmove dst src byte-size)
      (throw (IndexOutOfBoundsException.
              (format "You're trying to move data outside the bounds of %s memory block."
@@ -256,14 +273,16 @@
   If `byte-size` is not within bounds of `src` and `dst`, throws `IndexOutOfBoundsException`.
   "
   [^Pointer dst ^long value ^long byte-size]
-  (if (<= 0 byte-size (bytesize dst))
+  (if (and (not (Pointer/isNull dst)) (<= 0 byte-size (bytesize dst)))
     (Pointer/memset dst value byte-size)
     (throw (IndexOutOfBoundsException. "You're trying to set data outside the bounds of the destination memory block."))))
 
 (defn zero!
   "Initializes all elements in the memory block managed by `p` to zero."
   [^Pointer p]
-  (.zero p))
+  (if-not (Pointer/isNull p)
+    (.zero p)
+    p))
 
 ;; ================= Pointer =================================
 
@@ -376,20 +395,6 @@
     (.position p n)
     (throw (IndexOutOfBoundsException. (format "The requested position %d is larger than capacity %d."
                                                n (.capacity p))))))
-
-(defn safe
-  "If pointer `p` is neither `nil` nor `NULL`, returns `p`. Otherwise, throws an `IllegalArgumentexception`."
-  ^Pointer [^Pointer p]
-  (if-not (null? p)
-    p
-    (throw (IllegalArgumentException. "Neither nil nor NULL pointer is allowed in this part of code. Please do not use non-initialized pointers here."))))
-
-(defn safe2
-  "If pointer `p` is not `NULL`, returns `p`. Otherwise, throws an `IllegalArgumentexception`."
-  ^Pointer [^Pointer p]
-  (if (or (nil? p) (< 0 (.address p)))
-    p
-    (throw (IllegalArgumentException. "NULL pointer is not allowed in this part of code. Please do not use non-initialized pointers here."))))
 
 (defn get-pointer
   "Returns a new pointer that manages the memory block managed by `p`, starting from element `i`,
@@ -1726,32 +1731,50 @@
         (.put this# i# (~entry-type value#))
         this#))
      (fill! [this# value#]
-       (let [v# (~entry-type value#)]
-         (if (~zero? v#)
-           (.zero this#)
-           (dotimes [i# (size this#)]
-             (.put this# i# (~entry-type value#)))))
+       (when-not (null? this#)
+         (let [v# (~entry-type value#)]
+           (if (~zero? v#)
+             (.zero this#)
+             (dotimes [i# (size this#)]
+               (.put this# i# (~entry-type value#))))))
        this#)
      (get!
        ([p# arr#]
-        (access* get ~pt p# ~array-type arr#)
+        (if (and (not (null? p#))
+                 (<= 0 (alength (~array-type arr#)) (capacity p#)))
+          (access* get ~pt p# ~array-type arr#)
+          (throw (ArrayIndexOutOfBoundsException. "Requested range is out of bounds")))
         arr#)
        ([p# arr# offset# length#]
-        (access* get ~pt p# ~array-type arr# offset# length#)
+        (if (and (not (null? p#))
+                 (<= 0 offset# (+ (long offset#) (long length#)) (capacity p#))
+                 (<= 0 length# (alength (~array-type arr#))))
+          (access* get ~pt p# ~array-type arr# offset# length#)
+          (throw (ArrayIndexOutOfBoundsException. "Requested range is out of bounds")))
         arr#))
      (put!
        ([p# obj#]
         (if (sequential? obj#)
-          (.put p# (~array-type (~convert-fn obj#)))
-          (.put p# (~array-type obj#)))
+          (put! p# (~array-type (~convert-fn obj#)))
+          (if (and (not (null? p#))
+                   (<= 0 (alength (~array-type obj#)) (capacity p#)))
+            (.put p# (~array-type obj#))
+            (throw (ArrayIndexOutOfBoundsException. "Requested range is out of bounds"))))
         p#)
        ([p# obj# offset# length#]
         (if (sequential? obj#)
-          (.put p# (~array-type (~convert-fn (take length# (drop offset# obj#)))))
-          (.put p# obj# offset# length#))))
+          (put! p# (~array-type (~convert-fn (take length# (drop offset# obj#)))))
+          (if (and (not (null? p#))
+                   (<= 0 offset# (+ (long offset#) (long length#)) (capacity p#))
+                   (<= 0 length# (alength (~array-type obj#))))
+            (.put p# obj# offset# length#)
+            (throw (ArrayIndexOutOfBoundsException. "Requested range is out of bounds"))))
+        p#))
      PointerVec
      (pointer-vec [this#]
-       (let [n# (size this#)]
+       (let [n# (if-not (null? this#)
+                  (size this#)
+                  0)]
          (loop [res# (transient []) i# 0]
            (if (< i# n#)
              (recur (conj! res# (.get this# i#)) (inc i#))
@@ -1782,27 +1805,43 @@
      (put-entry* value i this)
      this))
   (fill! [this value]
-    (if (zero? (byte value))
-      (.zero this)
-      (.fill this value))
+    (when-not (null? this)
+      (if (zero? (byte value))
+        (.zero this)
+        (.fill this value)))
     this)
   (get!
     ([p arr]
-     (.get p (bytes arr))
+     (if (and (not (null? p))
+              (<= 0 (alength (bytes arr)) (capacity p)))
+       (.get p (bytes arr))
+       (throw (ArrayIndexOutOfBoundsException. "Requested range is out of bounds")))
      arr)
     ([p arr offset length]
-     (.get p (bytes arr) offset length)
+     (if (and (not (null? p))
+              (<= 0 offset (+ (long offset) (long length)) (capacity p))
+              (<= 0 length (alength (bytes arr))))
+       (.get p (bytes arr) offset length)
+       (throw (ArrayIndexOutOfBoundsException. "Requested range is out of bounds")))
      arr))
   (put!
     ([p obj]
      (if (sequential? obj)
-       (.put p (byte-array obj))
-       (.put p (bytes obj)))
+       (put! p (byte-array obj))
+       (if (and (not (null? p))
+                (<= 0 (alength (bytes obj)) (capacity p)))
+         (.put p (bytes obj))
+         (throw (ArrayIndexOutOfBoundsException. "Requested range is out of bounds"))))
      p)
     ([p obj offset length]
      (if (sequential? obj)
-       (.put p (byte-array (take length (drop offset obj))))
-       (.put p obj offset length)))))
+       (put! p (byte-array (take length (drop offset obj))))
+       (if (and (not (null? p))
+                (<= 0 offset (+ (long offset) (long length)) (capacity p))
+                (<= 0 length (alength (bytes obj))))
+         (.put p obj offset length)
+         (throw (ArrayIndexOutOfBoundsException. "Requested range is out of bounds"))))
+     p)))
 
 (extend-type BoolPointer
   PointerCreator
@@ -1828,12 +1867,15 @@
      (.put this i (boolean value))
      this))
   (fill! [this value]
-    (dotimes [i (size this)]
-      (.put this i (boolean value)))
+    (when-not (null? this)
+      (dotimes [i (size this)]
+        (.put this i (boolean value))))
     this)
   PointerVec
   (pointer-vec [this]
-    (let [n (size this)]
+    (let [n (if-not (null? this)
+              (size this)
+              0)]
       (loop [res (transient []) i 0]
         (if (< i n)
           (recur (conj! res (.get this i)) (inc i))
@@ -1882,19 +1924,22 @@
      (.put this i ^Pointer value)
      this))
   (fill! [this value]
-    (dotimes [i (size this)]
-      (.put this i ^Pointer value))
+    (when-not (null? this)
+      (dotimes [i (size this)]
+        (.put this i ^Pointer value)))
     this)
   (put!
-    ([p obj]
-     (put-pointer-pointer* obj p)
-     p)
+    ([this obj]
+     (put-pointer-pointer* obj this)
+     this)
     ([this src arg]
      (put-pointer-pointer* arg src this)
      this))
   PointerVec
   (pointer-vec [this#]
-    (let [n# (size this#)]
+    (let [n# (if-not (null? this#)
+               (size this#)
+               0)]
       (loop [res# (transient []) i# 0]
         (if (< i# n#)
           (recur (conj! res# (.get this# i#)) (inc i#))

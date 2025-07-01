@@ -70,7 +70,13 @@
    (free! (position! p3 100000)) => p3
    (null? p3) => true
    (null? p4) => false
-   (free! p4) => p4))
+   (free! p4) => p4
+   (capacity p3) => 128000
+   (address p3) => 0
+   (position p3) => 0
+   (as-byte-buffer p3) => nil
+   (as-buffer p3) => nil
+   (zero! p2) => p2))
 
 (facts
  "Test memcmp"
@@ -217,8 +223,13 @@
      (get-entry bp1 0) => (cast 1)
      (zero! bp) => bp
      (get-entry bp 0) => (cast 0)
+     (put! bp1 [10 20 30 99]) => (throws ArrayIndexOutOfBoundsException)
+     (seq (get! bp1 (array 4))) => (throws ArrayIndexOutOfBoundsException)
+     (position bp1) => 0
+     (position! bp1 0) => bp1
      (put! bp1 [10 20 30]) => bp1
      (seq (get! bp1 (array 3))) => (map cast [10 20 30])
+     (position bp1) => 0
      (pointer-seq bp) => (map cast [10 20 30])
      (pointer-vec bp) => (vec (pointer-seq bp))
      (pointer-seq bp2) => (map cast [100 101 102])
@@ -226,7 +237,9 @@
      (put-entry! bp3 0 11) => bp3
      (seq arr3) => (map cast [100 101 102])
      (release bp) => true
+     (seq (get! bp1 (array 4))) => (throws ArrayIndexOutOfBoundsException)
      (release bp1) => true
+     (get-entry bp1 0) => (throws NullPointerException)
      (release bp2) => true
      (release bp3) => true)))
 
