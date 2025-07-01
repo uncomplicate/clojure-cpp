@@ -13,6 +13,6 @@ Clojure C++ is a Clojure library for interop with native C++ based libraries. It
 
 ## License
 
-Copyright © 2023 Dragan Djuric
+Copyright © 2023-2025 Dragan Djuric
 
 Distributed under the Eclipse Public License either version 1.0 or (at your option) any later version.
