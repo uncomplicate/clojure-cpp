@@ -6,14 +6,14 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject org.uncomplicate/clojure-cpp "0.5.0"
+(defproject org.uncomplicate/clojure-cpp "0.5.1-SNAPSHOT"
   :description "Clojure native interop through JavaCPP"
   :author "Dragan Djuric"
   :url "http://github.com/uncomplicate/clojure-cpp"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.12.0"]
-                 [uncomplicate/commons "0.17.0"]
+  :dependencies [[org.clojure/clojure "1.12.1"]
+                 [uncomplicate/commons "0.17.1-SNAPSHOT"]
                  [uncomplicate/fluokitten "0.10.0"]
                  [org.bytedeco/javacpp-platform "1.5.12"]]
 
