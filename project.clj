@@ -6,7 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject org.uncomplicate/clojure-cpp "0.5.1"
+(defproject org.uncomplicate/clojure-cpp "0.5.2-SNAPSHOT"
   :description "Clojure native interop through JavaCPP"
   :author "Dragan Djuric"
   :url "http://github.com/uncomplicate/clojure-cpp"
