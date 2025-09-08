@@ -27,7 +27,7 @@
    (with-release [x (byte-pointer 10000)]
      (< tb (tracked-bytes)) => true
      (< 0 pb mpb) => true
-     (<= 0 mpb apb) => true
+     ;;(<= 0 mpb apb) => true It is not really the rule, since some machines can have more memory than Pointer can handle, but some don't
      (<= 0 tb) => true
      (< tb mtb) => true
      (<= 0 pc tb) => true
