@@ -6,16 +6,16 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject org.uncomplicate/clojure-cpp "0.6.0"
+(defproject org.uncomplicate/clojure-cpp "0.7.0-SNAPSHOT"
   :description "Clojure native interop through JavaCPP"
   :author "Dragan Djuric"
   :url "http://github.com/uncomplicate/clojure-cpp"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.12.2"]
-                 [uncomplicate/commons "0.18.0"]
+  :dependencies [[org.clojure/clojure "1.12.4"]
+                 [uncomplicate/commons "0.19.0"]
                  [uncomplicate/fluokitten "0.10.0"]
-                 [org.bytedeco/javacpp-platform "1.5.12"]]
+                 [org.bytedeco/javacpp-platform "1.5.13"]]
 
   :profiles {:dev {:plugins [[lein-midje "3.2.1"]
                              [lein-codox "0.10.8"]
@@ -33,7 +33,7 @@
                    :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
                                         "--enable-native-access=ALL-UNNAMED"]}}
 
-  :repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]
+  ;; :repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]
 
   :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]
 
