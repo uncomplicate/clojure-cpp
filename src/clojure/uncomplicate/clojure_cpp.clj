@@ -240,7 +240,7 @@
    (Pointer/memcmp p1 p2 (min (bytesize p1) (bytesize p2)))))
 
 (defn memcpy!
-  "Copies `byte-size` bytes from `src` to `dst`, nad returns `dst`. If `byte-size` is not within
+  "Copies `byte-size` bytes from `src` to `dst`, and returns `dst`. If `byte-size` is not within
   bounds of `src` and `dst`, throws `IndexOutOfBoundsException`.
   "
   ([^Pointer src ^Pointer dst ^long byte-size]
@@ -1052,6 +1052,7 @@
   (case t
     :float float-pointer
     :double double-pointer
+    :half short-pointer
     :long long-pointer
     :int int-pointer
     :short short-pointer
@@ -1747,8 +1748,8 @@
         arr#)
        ([p# arr# offset# length#]
         (if (and (not (null? p#))
-                 (<= 0 offset# (+ (long offset#) (long length#)) (capacity p#))
-                 (<= 0 length# (alength (~array-type arr#))))
+                 (<= 0 offset# (+ (long offset#) (long length#)) (alength (~array-type arr#)))
+                 (<= 0 length#  (capacity p#)))
           (access* get ~pt p# ~array-type arr# offset# length#)
           (throw (ArrayIndexOutOfBoundsException. "Requested range is out of bounds")))
         arr#))
