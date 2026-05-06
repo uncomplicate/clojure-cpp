@@ -1072,7 +1072,16 @@
     Byte/TYPE byte-pointer
     Character/TYPE char-pointer
     Boolean/TYPE bool-pointer
-    nil))
+    (cond
+      (= t Float/TYPE) float-pointer
+      (= t Double/TYPE) double-pointer
+      (= t Long/TYPE) long-pointer
+      (= t Integer/TYPE) int-pointer
+      (= t Short/TYPE) short-pointer
+      (= t Byte/TYPE) byte-pointer
+      (= t Character/TYPE) char-pointer
+      (= t Boolean/TYPE) bool-pointer)))
+
 
 (let [get-deallocator (doto (.getDeclaredMethod Pointer "deallocator" (make-array Class 0))
                         (.setAccessible true))
