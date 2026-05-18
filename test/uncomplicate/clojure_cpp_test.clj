@@ -16,6 +16,19 @@
  (pointer-type (pointer-class :byte)) => :byte)
 
 (facts
+  "Test type-pointer mappings."
+  (= (type-pointer Float) float-pointer) => true
+  (= (type-pointer Float/TYPE) float-pointer) => true
+  (= (type-pointer float) float-pointer) => true)
+
+(facts
+  "Test type-pointer conversion."
+  (let [p  (byte-pointer 4)]
+    (put-float! p 0 3.0)
+    (pointer-vec (float-pointer p)) => [3.0]
+    (pointer-vec ((type-pointer :float) p)) => [3.0]))
+
+(facts
  "Test system info functions."
  (let [pb (physical-bytes)
        apb (available-physical-bytes)

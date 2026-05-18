@@ -329,7 +329,15 @@
    Short/TYPE ShortPointer
    Byte/TYPE BytePointer
    Character/TYPE CharPointer
-   Boolean/TYPE BoolPointer})
+   Boolean/TYPE BoolPointer
+   Double DoublePointer
+   Float FloatPointer
+   Long LongPointer
+   Integer IntPointer
+   Short ShortPointer
+   Byte BytePointer
+   Character CharPointer
+   Boolean BoolPointer})
 
 (defn address
   "Returns the address of pointer `p`"
@@ -430,20 +438,98 @@
   (raw* [this] "Creates a new instance of this pointer's type with the same size."))
 
 (defprotocol TypedPointerCreator
-  (^PointerPointer pointer-pointer [this] [this charset] "Converts an object into `PointerPointer`.")
-  (^BytePointer byte-pointer [this] [this charset] "Converts an object into `BytePointer`.")
-  (^KeywordPointer keyword-pointer [this] [this charset] "Converts an object into `KeywordPointer`.")
-  (^StringPointer string-pointer [this] [this charset] "Converts an object into `StringPointer`.")
-  (^BoolPointer bool-pointer [this] "Converts an object into `BoolPointer`.")
-  (^CLongPointer clong-pointer [this] "Converts an object into `CLongPointer`.")
-  (^SizeTPointer size-t-pointer [this] "Converts an object into `SizeTPointer`.")
-  (^CharPointer char-pointer [this] "Converts an object into `CharPointer`.")
-  (^ShortPointer short-pointer [this] "Converts an object into `ShortPointer`.")
-  (^IntPointer int-pointer [this] "Converts an object into `IntPointer`.")
-  (^LongPointer long-pointer [this] "Converts an object into `LongPointer`.")
-  (^FloatPointer float-pointer [this] "Converts an object into `FloatPointer`.")
-  (^DoublePointer double-pointer [this] "Converts an object into `DoublePointer`.")
-  (^FunctionPointer function-pointer [this] "Converts an object into `FunctionPointer`."))
+  (^PointerPointer pointer-pointer* [this] [this charset] "Converts an object into `PointerPointer`.")
+  (^BytePointer byte-pointer* [this] [this charset] "Converts an object into `BytePointer`.")
+  (^KeywordPointer keyword-pointer* [this] [this charset] "Converts an object into `KeywordPointer`.")
+  (^StringPointer string-pointer* [this] [this charset] "Converts an object into `StringPointer`.")
+  (^BoolPointer bool-pointer* [this] "Converts an object into `BoolPointer`.")
+  (^CLongPointer clong-pointer* [this] "Converts an object into `CLongPointer`.")
+  (^SizeTPointer size-t-pointer* [this] "Converts an object into `SizeTPointer`.")
+  (^CharPointer char-pointer* [this] "Converts an object into `CharPointer`.")
+  (^ShortPointer short-pointer* [this] "Converts an object into `ShortPointer`.")
+  (^IntPointer int-pointer* [this] "Converts an object into `IntPointer`.")
+  (^LongPointer long-pointer* [this] "Converts an object into `LongPointer`.")
+  (^FloatPointer float-pointer* [this] "Converts an object into `FloatPointer`.")
+  (^DoublePointer double-pointer* [this] "Converts an object into `DoublePointer`.")
+  (^FunctionPointer function-pointer* [this] "Converts an object into `FunctionPointer`."))
+
+(defn pointer-pointer
+  "Converts an object into `PointerPointer`."
+  (^PointerPointer [this]
+   (pointer-pointer* this))
+  (^PointerPointer [this charset]
+   (pointer-pointer* this charset)))
+
+(defn byte-pointer
+  "Converts an object into `BytePointer`."
+  (^BytePointer [this]
+   (byte-pointer* this))
+  (^BytePointer [this charset]
+   (byte-pointer* this charset)))
+
+(defn keyword-pointer
+  "Converts an object into `KeywordPointer`."
+  (^KeywordPointer [this]
+   (keyword-pointer* this))
+  (^KeywordPointer [this charset]
+   (keyword-pointer* this charset)))
+
+(defn string-pointer
+  "Converts an object into `StringPointer`."
+  (^StringPointer [this]
+   (string-pointer* this))
+  (^StringPointer [this charset]
+   (string-pointer* this charset)))
+
+(defn bool-pointer
+  "Converts an object into `BoolPointer`."
+  ^BoolPointer [this]
+  (bool-pointer* this))
+
+(defn clong-pointer
+  "Converts an object into `CLongPointer`."
+  ^CLongPointer [this]
+  (clong-pointer* this))
+
+(defn size-t-pointer
+  "Converts an object into `SizeTPointer`."
+  ^SizeTPointer [this]
+  (size-t-pointer* this))
+
+(defn char-pointer
+  "Converts an object into `CharPointer`."
+  ^CharPointer [this]
+  (char-pointer* this))
+
+(defn short-pointer
+  "Converts an object into `ShortPointer`."
+  ^ShortPointer [this]
+  (short-pointer* this))
+
+(defn int-pointer
+  "Converts an object into `IntPointer`."
+  ^IntPointer [this]
+  (int-pointer* this))
+
+(defn long-pointer
+  "Converts an object into `LongPointer`."
+  ^LongPointer [this]
+  (long-pointer* this))
+
+(defn float-pointer
+  "Converts an object into `FloatPointer`."
+  ^FloatPointer [this]
+  (float-pointer* this))
+
+(defn double-pointer
+  "Converts an object into `DoublePointer`."
+  ^DoublePointer [this]
+  (double-pointer* this))
+
+(defn function-pointer
+  "Converts an object into `FunctionPointer`."
+  ^FunctionPointer [this]
+  (function-pointer* this))
 
 (defprotocol PointerVec
   (pointer-vec [this]
@@ -1045,34 +1131,47 @@
 (defprotocol ^:no-doc PutPointer
   (put-pointer-pointer* [src dst] [arg src dst] "A convenience method to facilitate PointerPointer's put!."))
 
-(defn type-pointer
+(def type-pointer
   "Returns the appropriate constructor for the pointer of type `t`, such as [[float-pointer]]
   for `:float` or `float`."
-  [t]
-  (case t
-    :float float-pointer
-    :double double-pointer
-    :half short-pointer
-    :long long-pointer
-    :int int-pointer
-    :short short-pointer
-    :byte byte-pointer
-    :char char-pointer
-    :size-t size-t-pointer
-    :clong clong-pointer
-    :pointer pointer-pointer
-    :bool bool-pointer
-    :function function-pointer
-    :uint8 byte-pointer
-    Float/TYPE float-pointer
-    Double/TYPE double-pointer
-    Long/TYPE long-pointer
-    Integer/TYPE int-pointer
-    Short/TYPE short-pointer
-    Byte/TYPE byte-pointer
-    Character/TYPE char-pointer
-    Boolean/TYPE bool-pointer
-    nil))
+  {:float float-pointer
+   :double double-pointer
+   :half short-pointer
+   :long long-pointer
+   :int int-pointer
+   :short short-pointer
+   :byte byte-pointer
+   :char char-pointer
+   :size-t size-t-pointer
+   :clong clong-pointer
+   :pointer pointer-pointer
+   :bool bool-pointer
+   :function function-pointer
+   :uint8 byte-pointer
+   Float/TYPE float-pointer
+   Double/TYPE double-pointer
+   Long/TYPE long-pointer
+   Integer/TYPE int-pointer
+   Short/TYPE short-pointer
+   Byte/TYPE byte-pointer
+   Character/TYPE char-pointer
+   Boolean/TYPE bool-pointer
+   Float float-pointer
+   Double double-pointer
+   Long long-pointer
+   Integer int-pointer
+   Short short-pointer
+   Byte byte-pointer
+   Character char-pointer
+   Boolean bool-pointer
+   float float-pointer
+   double double-pointer
+   long long-pointer
+   int int-pointer
+   short short-pointer
+   byte byte-pointer
+   char char-pointer
+   boolean bool-pointer})
 
 (let [get-deallocator (doto (.getDeclaredMethod Pointer "deallocator" (make-array Class 0))
                         (.setAccessible true))
@@ -1118,33 +1217,33 @@
       ([this i]
        (.getPointer this ^long i)))
     TypedPointerCreator
-    (byte-pointer [this]
+    (byte-pointer* [this]
       (.getPointer this BytePointer 0))
-    (keyword-pointer [this]
+    (keyword-pointer* [this]
       (.getPointer this KeywordPointer 0))
-    (string-pointer [this]
+    (string-pointer* [this]
       (.getPointer this StringPointer 0))
-    (clong-pointer [this]
+    (clong-pointer* [this]
       (.getPointer this CLongPointer 0))
-    (size-t-pointer [this]
+    (size-t-pointer* [this]
       (.getPointer this SizeTPointer 0))
-    (bool-pointer [this]
+    (bool-pointer* [this]
       (.getPointer this BoolPointer 0))
-    (pointer-pointer [this]
+    (pointer-pointer* [this]
       (.getPointer this PointerPointer 0))
-    (char-pointer [this]
+    (char-pointer* [this]
       (.getPointer this CharPointer 0))
-    (short-pointer [this]
+    (short-pointer* [this]
       (.getPointer this ShortPointer 0))
-    (int-pointer [this]
+    (int-pointer* [this]
       (.getPointer this IntPointer 0))
-    (long-pointer [this]
+    (long-pointer* [this]
       (.getPointer this LongPointer 0))
-    (float-pointer [this]
+    (float-pointer* [this]
       (.getPointer this FloatPointer 0))
-    (double-pointer [this]
+    (double-pointer* [this]
       (.getPointer this DoublePointer 0))
-    (function-pointer [this]
+    (function-pointer* [this]
       (.getPointer this FunctionPointer 0))))
 
 (extend-type nil
@@ -1158,29 +1257,29 @@
   (raw* [_]
     (Pointer.))
   TypedPointerCreator
-  (byte-pointer [_]
+  (byte-pointer* [_]
     (BytePointer.))
-  (string-pointer [_]
+  (string-pointer* [_]
     (StringPointer.))
-  (clong-pointer [_]
+  (clong-pointer* [_]
     (CLongPointer.))
-  (size-t-pointer [_]
+  (size-t-pointer* [_]
     (SizeTPointer.))
-  (bool-pointer [_]
+  (bool-pointer* [_]
     (BoolPointer.))
-  (pointer-pointer [_]
+  (pointer-pointer* [_]
     (PointerPointer.))
-  (char-pointer [_]
+  (char-pointer* [_]
     (CharPointer.))
-  (short-pointer [_]
+  (short-pointer* [_]
     (ShortPointer.))
-  (int-pointer [_]
+  (int-pointer* [_]
     (IntPointer.))
-  (long-pointer [_]
+  (long-pointer* [_]
     (LongPointer.))
-  (float-pointer [_]
+  (float-pointer* [_]
     (FloatPointer.))
-  (double-pointer [_]
+  (double-pointer* [_]
     (DoublePointer.)))
 
 (defmacro ^:private create-new*
@@ -1194,31 +1293,31 @@
 (defmacro ^:private extend-creator [ct]
   `(extend-type ~ct
      TypedPointerCreator
-     (byte-pointer [this#]
+     (byte-pointer* [this#]
        (create-new* BytePointer this#))
-     (keywrod-pointer [this#]
+     (keywrod-pointer* [this#]
        (create-new* KeywordPointer this#))
-     (string-pointer [this#]
+     (string-pointer* [this#]
        (create-new* StringPointer this#))
-     (clong-pointer [this#]
+     (clong-pointer* [this#]
        (create-new* CLongPointer this#))
-     (size-t-pointer [this#]
+     (size-t-pointer* [this#]
        (create-new* SizeTPointer this#))
-     (bool-pointer [this#]
+     (bool-pointer* [this#]
        (create-new* BoolPointer this#))
-     (pointer-pointer [this#]
+     (pointer-pointer* [this#]
        (create-new* PointerPointer this#))
-     (char-pointer [this#]
+     (char-pointer* [this#]
        (create-new* CharPointer this#))
-     (short-pointer [this#]
+     (short-pointer* [this#]
        (create-new* ShortPointer this#))
-     (int-pointer [this#]
+     (int-pointer* [this#]
        (create-new* IntPointer this#))
-     (long-pointer [this#]
+     (long-pointer* [this#]
        (create-new* LongPointer this#))
-     (float-pointer [this#]
+     (float-pointer* [this#]
        (create-new* FloatPointer this#))
-     (double-pointer [this#]
+     (double-pointer* [this#]
        (create-new* DoublePointer this#))))
 
 (extend-creator Character)
@@ -1263,17 +1362,17 @@
 
 (extend Seqable
   TypedPointerCreator
-  {:byte-pointer (from-seqable BytePointer byte)
-   :clong-pointer (from-seqable CLongPointer long)
-   :size-t-pointer (from-seqable SizeTPointer long)
-   :bool-pointer (from-seqable BoolPointer boolean)
-   :pointer-pointer (from-seqable PointerPointer pointer)
-   :char-pointer (from-seqable CharPointer char)
-   :short-pointer (from-seqable ShortPointer short)
-   :int-pointer (from-seqable IntPointer int)
-   :long-pointer (from-seqable LongPointer long)
-   :float-pointer (from-seqable FloatPointer float)
-   :double-pointer (from-seqable DoublePointer double)})
+  {:byte-pointer* (from-seqable BytePointer byte)
+   :clong-pointer* (from-seqable CLongPointer long)
+   :size-t-pointer* (from-seqable SizeTPointer long)
+   :bool-pointer* (from-seqable BoolPointer boolean)
+   :pointer-pointer* (from-seqable PointerPointer pointer)
+   :char-pointer* (from-seqable CharPointer char)
+   :short-pointer* (from-seqable ShortPointer short)
+   :int-pointer* (from-seqable IntPointer int)
+   :long-pointer* (from-seqable LongPointer long)
+   :float-pointer* (from-seqable FloatPointer float)
+   :double-pointer* (from-seqable DoublePointer double)})
 
 (extend-type Buffer
   PointerCreator
@@ -1291,21 +1390,21 @@
     ([this i]
      (.position (BytePointer. this) (long i))))
   TypedPointerCreator
-  (byte-pointer [this]
+  (byte-pointer* [this]
     (BytePointer. this))
-  (string-pointer [this]
+  (string-pointer* [this]
     (StringPointer. this))
-  (char-pointer [this]
+  (char-pointer* [this]
     (CharPointer. (.asCharBuffer this)))
-  (short-pointer [this]
+  (short-pointer* [this]
     (ShortPointer. (.asShortBuffer this)))
-  (int-pointer [this]
+  (int-pointer* [this]
     (IntPointer. (.asIntBuffer this)))
-  (long-pointer [this]
+  (long-pointer* [this]
     (LongPointer. (.asLongBuffer this)))
-  (float-pointer [this]
+  (float-pointer* [this]
     (FloatPointer. (.asFloatBuffer this)))
-  (double-pointer [this]
+  (double-pointer* [this]
     (DoublePointer. (.asDoubleBuffer this))))
 
 (defmacro ^:private extend-buffer [buffer-class pt method]
@@ -1320,12 +1419,12 @@
      (~method [this#]
       (create-new* ~pt ~buffer-class this#))))
 
-(extend-buffer CharBuffer CharPointer char-pointer)
-(extend-buffer ShortBuffer ShortPointer short-pointer)
-(extend-buffer IntBuffer IntPointer int-pointer)
-(extend-buffer LongBuffer LongPointer long-pointer)
-(extend-buffer FloatBuffer FloatPointer float-pointer)
-(extend-buffer DoubleBuffer DoublePointer double-pointer)
+(extend-buffer CharBuffer CharPointer char-pointer*)
+(extend-buffer ShortBuffer ShortPointer short-pointer*)
+(extend-buffer IntBuffer IntPointer int-pointer*)
+(extend-buffer LongBuffer LongPointer long-pointer*)
+(extend-buffer FloatBuffer FloatPointer float-pointer*)
+(extend-buffer DoubleBuffer DoublePointer double-pointer*)
 
 (defmacro ^:private access*
   ([method pt dst src]
@@ -1351,26 +1450,26 @@
        ([this# p#]
         (access* put ~pt p# ~array-type this#)))))
 
-(extend-array (Class/forName "[F") floats FloatPointer float-pointer)
-(extend-array (Class/forName "[D") doubles DoublePointer double-pointer)
-(extend-array (Class/forName "[C") chars CharPointer char-pointer)
-(extend-array (Class/forName "[B") bytes BytePointer byte-pointer)
-(extend-array (Class/forName "[S") shorts ShortPointer short-pointer)
-(extend-array (Class/forName "[I") ints IntPointer int-pointer)
-(extend-array (Class/forName "[J") longs LongPointer long-pointer)
+(extend-array (Class/forName "[F") floats FloatPointer float-pointer*)
+(extend-array (Class/forName "[D") doubles DoublePointer double-pointer*)
+(extend-array (Class/forName "[C") chars CharPointer char-pointer*)
+(extend-array (Class/forName "[B") bytes BytePointer byte-pointer*)
+(extend-array (Class/forName "[S") shorts ShortPointer short-pointer*)
+(extend-array (Class/forName "[I") ints IntPointer int-pointer*)
+(extend-array (Class/forName "[J") longs LongPointer long-pointer*)
 
 (extend-type (Class/forName "[J")
   TypedPointerCreator
-  (clong-pointer [this]
+  (clong-pointer* [this]
     (CLongPointer. ^longs this))
-  (size-t-pointer [this]
+  (size-t-pointer* [this]
     (SizeTPointer. ^longs this))
-  (long-pointer [this]
+  (long-pointer* [this]
     (LongPointer. ^longs this)))
 
 (extend-type (Class/forName "[[B")
   TypedPointerCreator
-  (pointer-pointer [this]
+  (pointer-pointer* [this]
     (PointerPointer. ^"[[B" this))
   PutPointer
   (put-pointer-pointer* [this pp]
@@ -1378,7 +1477,7 @@
 
 (extend-type (Class/forName "[[S")
   TypedPointerCreator
-  (pointer-pointer [this]
+  (pointer-pointer* [this]
     (PointerPointer. ^"[[S" this))
   PutPointer
   (put-pointer-pointer* [this pp]
@@ -1386,7 +1485,7 @@
 
 (extend-type (Class/forName "[[I")
   TypedPointerCreator
-  (pointer-pointer [this]
+  (pointer-pointer* [this]
     (PointerPointer. ^"[[I" this))
   PutPointer
   (put-pointer-pointer* [this pp]
@@ -1394,7 +1493,7 @@
 
 (extend-type (Class/forName "[[J")
   TypedPointerCreator
-  (pointer-pointer [this]
+  (pointer-pointer* [this]
     (PointerPointer. ^"[[J" this))
   PutPointer
   (put-pointer-pointer* [this pp]
@@ -1402,7 +1501,7 @@
 
 (extend-type (Class/forName "[[F")
   TypedPointerCreator
-  (pointer-pointer [this]
+  (pointer-pointer* [this]
     (PointerPointer. ^"[[F" this))
   PutPointer
   (put-pointer-pointer* [this pp]
@@ -1410,7 +1509,7 @@
 
 (extend-type (Class/forName "[[D")
   TypedPointerCreator
-  (pointer-pointer [this]
+  (pointer-pointer* [this]
     (PointerPointer. ^"[[D" this))
   PutPointer
   (put-pointer-pointer* [this pp]
@@ -1418,7 +1517,7 @@
 
 (extend-type (Class/forName "[[C")
   TypedPointerCreator
-  (pointer-pointer [this]
+  (pointer-pointer* [this]
     (PointerPointer. ^"[[C" this))
   PutPointer
   (put-pointer-pointer* [this pp]
@@ -1426,7 +1525,7 @@
 
 (extend-type (Class/forName "[Lorg.bytedeco.javacpp.Pointer;")
   TypedPointerCreator
-  (pointer-pointer [this]
+  (pointer-pointer* [this]
     (PointerPointer. ^"[Lorg.bytedeco.javacpp.Pointer;" this))
   PutPointer
   (put-pointer-pointer* [this pp]
@@ -1434,7 +1533,7 @@
 
 (extend-type (Class/forName "[Ljava.lang.String;")
   TypedPointerCreator
-  (pointer-pointer
+  (pointer-pointer*
     ([this]
      (PointerPointer. ^"[Ljava.lang.String;" this))
     ([this charset]
@@ -1479,21 +1578,21 @@
     ([k i]
      (.position (keyword-pointer* k) (long i))))
   TypedPointerCreator
-  (byte-pointer
+  (byte-pointer*
     ([k]
      (BytePointer. (subs (str k) 1)))
     ([k charset]
      (if (string? charset)
        (BytePointer. (subs (str k) 1) ^String charset)
        (BytePointer. (subs (str k) 1) ^Charset charset))))
-  (byte-pointer
+  (byte-pointer*
     ([k]
      (StringPointer. (subs (str k) 1)))
     ([k charset]
      (if (string? charset)
        (StringPointer. (subs (str k) 1) ^String charset)
        (StringPointer. (subs (str k) 1) ^Charset charset))))
-  (keyword-pointer
+  (keyword-pointer*
     ([k]
      (keyword-pointer* k))
     ([k charset]
@@ -1529,21 +1628,21 @@
     ([s i]
      (.position (StringPointer. s) (long i))))
   TypedPointerCreator
-  (byte-pointer
+  (byte-pointer*
     ([s]
      (BytePointer. s))
     ([s charset]
      (if (string? charset)
        (BytePointer. s ^String charset)
        (BytePointer. s ^Charset charset))))
-  (string-pointer
+  (string-pointer*
     ([s]
      (StringPointer. s))
     ([s charset]
      (if (string? charset)
        (StringPointer. s ^String charset)
        (StringPointer. s ^Charset charset))))
-  (keyword-pointer
+  (keyword-pointer*
     ([s]
      (KeywordPointer. s))
     ([s charset]
