@@ -1,5 +1,5 @@
 (ns uncomplicate.clojure-cpp-test
-  (:require [midje.sweet :refer [facts throws =>]]
+  (:require [midje.sweet :refer [facts throws => truthy]]
             [uncomplicate.commons
              [core :refer [info release with-release size bytesize sizeof double-fn long-fn]]
              [utils :as commons]]
@@ -27,6 +27,14 @@
     (put-float! p 0 3.0)
     (pointer-vec (float-pointer p)) => [3.0]
     (pointer-vec ((type-pointer :float) p)) => [3.0]))
+
+(facts
+  "Integral sizes create keyword and string pointers of that capacity."
+  (with-release [k (keyword-pointer 3)
+                 s (string-pointer 3)]
+    (size k) => 3
+    (size s) => 3
+    (keyword-pointer (int 2)) => truthy))
 
 (facts
  "Test system info functions."

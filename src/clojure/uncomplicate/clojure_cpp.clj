@@ -1295,7 +1295,7 @@
      TypedPointerCreator
      (byte-pointer* [this#]
        (create-new* BytePointer this#))
-     (keywrod-pointer* [this#]
+     (keyword-pointer* [this#]
        (create-new* KeywordPointer this#))
      (string-pointer* [this#]
        (create-new* StringPointer this#))
