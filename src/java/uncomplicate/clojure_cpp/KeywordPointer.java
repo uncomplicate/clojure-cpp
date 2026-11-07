@@ -16,6 +16,10 @@ import clojure.lang.Keyword;
 
 public class KeywordPointer extends BytePointer {
 
+    public KeywordPointer (long size) {
+        super(size);
+    }
+
     public KeywordPointer (String name) {
         super(name);
     }
